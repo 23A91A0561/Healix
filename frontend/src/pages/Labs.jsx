@@ -1,0 +1,3 @@
+import Navbar from '../components/Navbar.jsx';
+import { useFetch } from '../hooks/useFetch.js';
+export default function Labs() { const { data } = useFetch('/labs'); return <div><Navbar /><main className="mx-auto max-w-7xl p-8"><h1 className="text-3xl font-bold">Lab Tests</h1><div className="mt-6 grid gap-4 md:grid-cols-3">{data.map((t) => <div className="card p-5" key={t._id}><h2 className="font-bold">{t.name}</h2><p className="mt-2 text-sm text-slate-500">{t.description}</p><p className="mt-4 font-semibold">₹{t.price}</p><button className="btn-primary mt-4 w-full">Book test</button></div>)}</div></main></div>; }

@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { bookAppointment, listAppointments, saveHealthForm, updateAppointmentStatus, verifyAppointmentPayment } from '../controllers/appointment.controller.js';
+import { authorize, protect } from '../middleware/auth.middleware.js';
+const router = Router();
+router.use(protect);
+router.get('/', listAppointments);
+router.post('/', authorize('patient'), bookAppointment);
+router.post('/:id/payment/verify', authorize('patient'), verifyAppointmentPayment);
+router.patch('/:id/status', authorize('doctor', 'admin'), updateAppointmentStatus);
+router.post('/:id/health-form', authorize('patient'), saveHealthForm);
+export default router;

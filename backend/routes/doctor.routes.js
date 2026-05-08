@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { approveDoctor, getAvailability, getDoctor, listDoctors, updateSchedule } from '../controllers/doctor.controller.js';
+import { authorize, protect } from '../middleware/auth.middleware.js';
+const router = Router();
+router.get('/', protect, listDoctors);
+router.get('/:id', protect, getDoctor);
+router.get('/:id/availability', protect, getAvailability);
+router.patch('/:id/approve', protect, authorize('admin'), approveDoctor);
+router.patch('/:id/schedule', protect, authorize('doctor', 'admin'), updateSchedule);
+export default router;
