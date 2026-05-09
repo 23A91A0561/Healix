@@ -1,0 +1,94 @@
+/* Shared responsive utilities and overrides for smaller screens */
+
+:root {
+  --break-sm: 760px;
+  --break-md: 980px;
+  --break-lg: 1024px;
+}
+
+/* Make containers slightly more padded on very small screens */
+@media (max-width: 420px) {
+  .container {
+    width: calc(100% - 1rem);
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+/* General card/panel adjustments */
+@media (max-width: 760px) {
+  .card, .panel, .auth-card, .profile-card {
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .btn {
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 0.95rem;
+  }
+
+  .hero-visual img, .profile-image {
+    min-height: 220px;
+  }
+
+  /* Make tables horizontally scrollable and readable */
+  .panel-table-wrap {
+    overflow-x: auto;
+  }
+
+  /* Modal and overlays should fit inside viewport */
+  .modal-content {
+    width: calc(100% - 2rem);
+    max-width: 720px;
+  }
+}
+
+/* Responsive grids fallback */
+@media (max-width: 980px) {
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Small screen optimizations */
+@media (max-width: 760px) {
+  /* Ensure hero content stacks nicely */
+  .hero-grid { grid-template-columns: 1fr; gap: 18px; }
+
+  /* Make navigation actions compact */
+  .home-nav-inner { padding: 10px; }
+
+  /* Footer layout stack */
+  .site-footer-inner { flex-direction: column; gap: 12px; align-items: flex-start; }
+
+  /* Appointment & doctor cards full width */
+  .doctor-card, .appointment-card { width: 100%; }
+
+  /* Smaller avatar / user chips */
+  .user-avatar { width: 26px; height: 26px; }
+
+  /* Reduce empty state padding for mobile */
+  .empty-state { padding: 16px; }
+}
+
+/* Accessibility: increase tap targets on ultra-small devices */
+@media (max-width: 420px) {
+  .btn { min-height: 48px; }
+  .sidebar-link { min-height: 48px; }
+}
+
+/* Video consultation responsiveness */
+@media (max-width: 900px) {
+  .jitsi-container, .video-stage { width: 100%; height: auto; min-height: 360px; }
+}
+
+/* Ensure marquee testimonial is still readable on small screens */
+@media (max-width: 520px) {
+  .testimonial-card { width: 260px; }
+}
+
+/* Utility: hide decorative elements that crowd small screens */
+@media (max-width: 420px) {
+  .hero-trust { display: none; }
+}

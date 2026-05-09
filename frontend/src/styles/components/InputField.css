@@ -1,0 +1,35 @@
+.ui-field {
+  display: grid;
+  gap: 8px;
+}
+
+.ui-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ui-field-control {
+  position: relative;
+}
+
+.ui-field input {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ui-field input:focus {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.ui-field-right {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}

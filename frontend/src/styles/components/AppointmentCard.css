@@ -1,0 +1,61 @@
+.appointment-card {
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.appointment-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.appointment-body {
+  padding: 20px;
+}
+
+.appointment-name {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.appointment-meta {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.status-row {
+  margin-top: 14px;
+}
+
+.status-pill.pending {
+  background: rgba(217, 119, 6, 0.14);
+  color: var(--warning);
+}
+
+.status-pill.approved {
+  background: rgba(22, 163, 74, 0.14);
+  color: var(--success);
+}
+
+.status-pill.live {
+  background: rgba(37, 99, 235, 0.14);
+  color: var(--primary-blue);
+}
+
+.status-pill.completed {
+  background: rgba(100, 116, 139, 0.18);
+  color: #475569;
+}
+
+.appointment-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+}
+
+.appointment-actions .btn,
+.appointment-actions .btn-primary {
+  width: 100%;
+}

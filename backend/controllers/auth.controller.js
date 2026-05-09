@@ -11,9 +11,14 @@ const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const authPayload = (user) => ({ user, accessToken: signAccessToken(user), refreshToken: signRefreshToken(user) });
 
 export async function register(req, res) {
-  const { name, email, password, role = 'patient', specialization, qualification } = req.body;
+  const { name, email, password, role = 'patient', specialization, qualification, languages } = req.body;
   const user = await User.create({ name, email, password, role, isApproved: role !== 'doctor' });
-  if (role === 'doctor') await DoctorProfile.create({ user: user._id, specialization: specialization || 'General Physician', qualification });
+  if (role === 'doctor') await DoctorProfile.create({
+    user: user._id,
+    specialization: specialization || 'General Physician',
+    qualification,
+    languages: Array.isArray(languages) ? languages : typeof languages === 'string' && languages ? [languages] : []
+  });
   if (role === 'patient') await PatientProfile.create({ user: user._id });
   const token = crypto.randomBytes(32).toString('hex');
   user.verificationTokenHash = hash(token);

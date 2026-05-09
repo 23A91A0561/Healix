@@ -1,0 +1,48 @@
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 41, 59, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+
+.ui-modal-card {
+  width: min(520px, calc(100% - 1rem));
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  background: #fff;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.ui-modal-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ui-modal-head h3 {
+  margin: 0;
+}
+
+.ui-modal-close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.ui-modal-body {
+  padding: 16px;
+  color: var(--text-muted);
+}
+
+.ui-modal-footer {
+  padding: 0 16px 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api' });
+const apiHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const configuredBaseURL = import.meta.env.VITE_API_URL;
+const shouldUseCurrentHost = import.meta.env.DEV && apiHost !== 'localhost' && apiHost !== '127.0.0.1';
+const baseURL = shouldUseCurrentHost ? `http://${apiHost}:5000/api` : configuredBaseURL || `http://${apiHost}:5000/api`;
+const api = axios.create({ baseURL });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');

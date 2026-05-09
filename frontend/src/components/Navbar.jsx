@@ -1,26 +1,40 @@
 import { Link } from 'react-router-dom';
-import { FaBell, FaNotesMedical } from 'react-icons/fa';
+import { FaBell } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext.jsx';
+import '../styles/components/Navbar.css';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'H';
+
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 text-lg font-bold text-primary"><FaNotesMedical /> Healix</Link>
-        <nav className="flex items-center gap-2 text-sm">
-          <Link className="btn-light" to="/doctors">Doctors</Link>
-          <Link className="btn-light" to="/emergency">Emergency</Link>
-          {user ? (
-            <>
-              <Link className="btn-light" to="/notifications"><FaBell /></Link>
-              <Link className="btn-primary" to={`/${user.role}`}>Dashboard</Link>
-              <button className="btn-light" onClick={logout}>Logout</button>
-            </>
-          ) : (
-            <Link className="btn-primary" to="/login">Login</Link>
-          )}
-        </nav>
+    <header className="navbar glass">
+      <Link to="/" className="navbar-brand">
+        <span className="navbar-logo">H</span>
+        <span>
+          <span>Healix</span>
+          <small style={{ color: 'var(--text-muted)', display: 'block', fontWeight: 600 }}>
+            Connected care platform
+          </small>
+        </span>
+      </Link>
+
+      <div className="navbar-actions">
+        <Link className="btn btn-secondary" to="/doctors">Doctors</Link>
+        <Link className="btn btn-secondary" to="/emergency">Emergency</Link>
+        {user ? (
+          <>
+            <Link className="btn btn-secondary" aria-label="Notifications" to="/notifications"><FaBell /></Link>
+            <Link className="btn btn-primary" to={`/${user.role}`}>Dashboard</Link>
+            <div className="user-chip">
+              <span className="user-avatar">{initial}</span>
+              <span>{user.name}</span>
+            </div>
+            <button className="btn btn-secondary" type="button" onClick={logout}>Sign out</button>
+          </>
+        ) : (
+          <Link className="btn btn-primary" to="/login">Sign in</Link>
+        )}
       </div>
     </header>
   );

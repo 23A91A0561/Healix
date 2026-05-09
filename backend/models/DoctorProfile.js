@@ -16,6 +16,7 @@ const doctorProfileSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
   specialization: { type: String, required: true, index: true },
   qualification: String,
+  languages: { type: [String], default: [] },
   experienceYears: { type: Number, default: 0, index: true },
   consultationFee: { type: Number, default: 0 },
   bio: String,

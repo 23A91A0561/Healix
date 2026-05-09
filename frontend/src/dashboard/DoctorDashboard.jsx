@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DataTable from '../components/DataTable.jsx';
+import api from '../services/api.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { socket } from '../services/socket.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -12,6 +13,10 @@ export default function DoctorDashboard() {
   const { user } = useAuth();
   const { data } = useFetch('/appointments');
   const [sessionNotice, setSessionNotice] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [languagesInput, setLanguagesInput] = useState('');
+  const [savingLanguages, setSavingLanguages] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -29,6 +34,46 @@ export default function DoctorDashboard() {
       socket.off('session:status', onSessionStatus);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user?._id) return;
+    let isMounted = true;
+
+    async function loadProfile() {
+      try {
+        const { data: response } = await api.get(`/doctors/${user._id}`);
+        if (!isMounted) return;
+        setProfile(response);
+        setLanguagesInput((response.languages || []).join(', '));
+      } catch (error) {
+        if (!isMounted) return;
+        setProfileMessage(error.response?.data?.message || error.message);
+      }
+    }
+
+    loadProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?._id]);
+
+  async function saveLanguages(event) {
+    event.preventDefault();
+    if (!user?._id) return;
+    setSavingLanguages(true);
+    setProfileMessage('');
+    try {
+      const languages = languagesInput.split(',').map((language) => language.trim()).filter(Boolean);
+      const { data: response } = await api.patch(`/doctors/${user._id}/profile`, { languages });
+      setProfile(response);
+      setLanguagesInput((response.languages || []).join(', '));
+      setProfileMessage('Languages updated successfully.');
+    } catch (error) {
+      setProfileMessage(error.response?.data?.message || error.message);
+    } finally {
+      setSavingLanguages(false);
+    }
+  }
 
   const liveAppointments = useMemo(() => data.filter((appointment) => {
     const start = new Date(appointment.scheduledAt).getTime();
@@ -53,6 +98,23 @@ export default function DoctorDashboard() {
         <StatCard title="Prescriptions" value="38" icon={FaFilePrescription} />
         <StatCard title="Rating" value="4.8" icon={FaChartLine} />
       </div>
+      <form onSubmit={saveLanguages} className="mt-6 card p-5">
+        <h2 className="text-xl font-semibold">Doctor languages</h2>
+        <p className="mt-1 text-sm text-slate-500">Add or update the languages you can speak. Separate multiple languages with commas.</p>
+        <input
+          className="input mt-4"
+          placeholder="English, Hindi, Tamil"
+          value={languagesInput}
+          onChange={(e) => setLanguagesInput(e.target.value)}
+        />
+        {profileMessage && <p className="mt-3 text-sm text-slate-600">{profileMessage}</p>}
+        <button className="btn-primary mt-4" disabled={savingLanguages} type="submit">
+          {savingLanguages ? 'Saving...' : 'Save languages'}
+        </button>
+        {profile?.languages?.length ? (
+          <p className="mt-3 text-sm text-slate-500">Current languages: {profile.languages.join(', ')}</p>
+        ) : null}
+      </form>
       <div className="mt-6"><DataTable columns={[{ key: 'patient', label: 'Patient', render: (r) => r.patient?.name }, { key: 'scheduledAt', label: 'Date', render: (r) => new Date(r.scheduledAt).toLocaleString() }, { key: 'status', label: 'Status' }, { key: 'session', label: 'Session', render: (appointment) => {
         const start = new Date(appointment.scheduledAt).getTime();
         const end = start + (appointment.durationMinutes || 30) * 60 * 1000;

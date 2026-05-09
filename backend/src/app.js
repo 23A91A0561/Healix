@@ -24,9 +24,33 @@ import adminRoutes from '../routes/admin.routes.js';
 import { notFound, errorHandler } from '../middleware/error.middleware.js';
 
 const app = express();
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+].filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const url = new URL(origin);
+    return process.env.NODE_ENV !== 'production'
+      && ['localhost', '127.0.0.1'].includes(url.hostname)
+      && ['5173', '5174', '5175'].includes(url.port);
+  } catch {
+    return false;
+  }
+}
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+app.use(cors({
+  origin(origin, callback) {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

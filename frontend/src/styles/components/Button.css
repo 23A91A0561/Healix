@@ -1,0 +1,35 @@
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 0;
+  padding: 0 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ui-btn:hover {
+  transform: translateY(-2px);
+}
+
+.ui-btn-primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+}
+
+.ui-btn-secondary {
+  background: #fff;
+  color: var(--text-dark);
+  border: 1px solid var(--border-light);
+}
+
+.ui-btn-ghost {
+  background: transparent;
+  color: var(--text-dark);
+  border: 1px dashed var(--border-light);
+}

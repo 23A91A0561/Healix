@@ -4,6 +4,8 @@ import Navbar from '../components/Navbar.jsx';
 import api from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useFetch } from '../hooks/useFetch.js';
+import '../styles/pages/Dashboard.css';
+import '../styles/pages/Booking.css';
 
 function formatDateInput(date) {
   return date.toISOString().slice(0, 10);
@@ -11,6 +13,10 @@ function formatDateInput(date) {
 
 function formatDisplayDate(date) {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatPrice(value) {
+  return `Rs. ${Number(value || 0).toLocaleString('en-IN')}`;
 }
 
 function getNextSevenDays() {
@@ -57,7 +63,7 @@ const upiApps = [
 export default function Doctors() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [filters, setFilters] = useState({ q: '', specialization: '', rating: '', experience: '' });
+  const [filters, setFilters] = useState({ q: '', specialization: '', rating: '', language: '' });
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [availability, setAvailability] = useState([]);
@@ -72,6 +78,16 @@ export default function Doctors() {
   const [bookingError, setBookingError] = useState('');
   const query = useMemo(() => new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString(), [filters]);
   const { data } = useFetch(`/doctors?${query}`);
+  const { data: allDoctors } = useFetch('/doctors');
+  const doctors = data || [];
+  const specializations = useMemo(() => {
+    const list = (allDoctors || data || []).map((d) => d.specialization).filter(Boolean);
+    return Array.from(new Set(list)).sort();
+  }, [allDoctors, data]);
+  const languages = useMemo(() => {
+    const list = (allDoctors || data || []).flatMap((doctor) => doctor.languages || []).filter(Boolean);
+    return Array.from(new Set(list)).sort();
+  }, [allDoctors, data]);
 
   useEffect(() => {
     async function loadAvailability() {
@@ -93,16 +109,6 @@ export default function Doctors() {
     }
     loadAvailability();
   }, [selectedDoctor, selectedDate]);
-
-  function resetBookingFlow() {
-    setSelectedDoctor(null);
-    setSelectedDate('');
-    setAvailability([]);
-    setSchedule([]);
-    setSelectedSlot(null);
-    setPendingBooking(null);
-    setBookingError('');
-  }
 
   async function confirmBooking() {
     if (!selectedDoctor || !selectedDate || !selectedSlot) return;
@@ -175,186 +181,293 @@ export default function Doctors() {
   }
 
   return (
-    <div><Navbar /><main className="mx-auto max-w-7xl p-4 md:p-8">
-      <h1 className="text-3xl font-bold">Find doctors</h1>
-      <div className="mt-6 grid gap-3 md:grid-cols-4">
-        {['q', 'specialization', 'rating', 'experience'].map((key) => <input key={key} className="input" placeholder={key} value={filters[key]} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })} />)}
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {data.map((doctor) => <article className="card p-5" key={doctor._id}>
-          <div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-blue-50 font-bold text-primary">{doctor.user?.name?.[0]}</div><div><h2 className="font-bold">{doctor.user?.name}</h2><p className="text-sm text-slate-500">{doctor.qualification}</p></div></div>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-600"><p>{doctor.specialization}</p><p>{doctor.experienceYears} yrs exp</p><p>₹{doctor.consultationFee}</p><p>{doctor.rating?.average || 0} rating</p></div>
-          <button onClick={() => { setSelectedDoctor(doctor); setSelectedDate(formatDateInput(new Date())); }} className="btn-primary mt-5 w-full">Book slot</button>
-          {selectedDoctor?.user?._id === doctor.user?._id && (
-            <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-700">Select a date</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-                {getNextSevenDays().map((date) => {
-                  const value = formatDateInput(date);
-                  const active = selectedDate === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setSelectedDate(value)}
-                      className={`rounded-md border px-3 py-2 text-center text-sm ${active ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 bg-white text-slate-700'}`}
-                    >
-                      <div className="font-semibold">{formatDisplayDate(date)}</div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4">
-                <p className="text-sm font-semibold text-slate-700">Available 30-minute slots</p>
-                {bookingError && <p className="mt-2 rounded-md bg-red-50 p-2 text-sm text-red-700">{bookingError}</p>}
-                {loadingAvailability ? (
-                  <p className="mt-3 text-sm text-slate-500">Checking availability...</p>
-                ) : schedule.length ? (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Doctor schedule: {schedule.map((slot) => `${slot.day} ${slot.start}-${slot.end}`).join(', ')}
-                  </p>
-                ) : null}
-                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-                  {availability.map((slot) => {
-                    const active = selectedSlot?.start === slot.start;
-                    return (
-                      <button
-                        key={`${slot.start}-${slot.end}`}
-                        type="button"
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`rounded-md border px-3 py-2 text-sm ${active ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 bg-white text-slate-700'}`}
-                      >
-                        {slot.start} - {slot.end}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {!loadingAvailability && selectedDate && !availability.length && !bookingError && (
-                  <p className="mt-3 text-sm text-slate-500">No free slots found for the selected day.</p>
-                )}
-
-                <button onClick={confirmBooking} disabled={!selectedSlot || paymentProcessing} className="btn-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-50">
-                  {paymentProcessing ? 'Creating payment order...' : 'Continue to payment'}
-                </button>
-              </div>
+    <div className="dashboard-page">
+      <Navbar />
+      <main className="dashboard-content">
+        <section className="dashboard-hero">
+          <div className="dashboard-hero-head">
+            <div>
+              <p className="badge" style={{ margin: 0, background: 'rgba(37,99,235,0.12)', color: 'var(--primary-blue)' }}>
+                Directory
+              </p>
+              <h1>Find Doctors</h1>
+              <p>Search specialists, compare consultation prices, and book appointments with the right doctor.</p>
             </div>
-          )}
-        </article>)}
-      </div>
-    </main>
-    {pendingBooking && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-        <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
-          <div className="border-b border-slate-200 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-primary">Razorpay test payment</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-900">Pay consultation fee</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPendingBooking(null)}
-                className="rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-              <p><span className="font-semibold">Doctor:</span> {selectedDoctor?.user?.name}</p>
-              <p><span className="font-semibold">Amount:</span> Rs. {pendingBooking.payment?.amount}</p>
-              <p><span className="font-semibold">Order:</span> {pendingBooking.razorpay.orderId}</p>
+          </div>
+        </section>
+
+        <section className="filters-panel filters-panel-quad">
+          <div className="input-shell">
+            <label htmlFor="doctor-search">Search doctors</label>
+            <input
+              id="doctor-search"
+              type="search"
+              placeholder="Name, qualification, or clinic"
+              value={filters.q}
+              onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+            />
+          </div>
+
+          <div className="input-shell">
+            <label htmlFor="doctor-specialization">Specialization</label>
+            <select
+              id="doctor-specialization"
+              value={filters.specialization}
+              onChange={(e) => setFilters({ ...filters, specialization: e.target.value })}
+            >
+              <option value="">All specializations</option>
+              {specializations.map((specialization) => (
+                <option key={specialization} value={specialization}>{specialization}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="input-shell">
+            <label htmlFor="doctor-rating">Rating</label>
+            <select
+              id="doctor-rating"
+              value={filters.rating}
+              onChange={(e) => setFilters({ ...filters, rating: e.target.value })}
+            >
+              <option value="">Any rating</option>
+              <option value="5">5+ stars</option>
+              <option value="4">4+ stars</option>
+              <option value="3">3+ stars</option>
+            </select>
+          </div>
+
+          <div className="input-shell">
+            <label htmlFor="doctor-language">Language</label>
+            <select
+              id="doctor-language"
+              value={filters.language}
+              onChange={(e) => setFilters({ ...filters, language: e.target.value })}
+            >
+              <option value="">Any language</option>
+              {languages.map((language) => (
+                <option key={language} value={language}>{language}</option>
+              ))}
+            </select>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Available doctors</h2>
+              <p>Browse providers and choose an appointment slot.</p>
             </div>
           </div>
 
-          <div className="p-5">
-            <div className="grid grid-cols-3 gap-2">
+          <div className="doctor-grid">
+            {doctors.length ? doctors.map((doctor) => {
+              const isSelected = selectedDoctor?.user?._id === doctor.user?._id;
+              return (
+                <article className="profile-card" key={doctor._id} style={{ overflow: 'visible' }}>
+                  <div className="profile-body">
+                    <div className="navbar-brand" style={{ alignItems: 'center' }}>
+                      <span className="navbar-logo">{doctor.user?.name?.charAt(0) || 'D'}</span>
+                      <span>
+                        <strong>{doctor.user?.name}</strong>
+                        <small style={{ color: 'var(--text-muted)', display: 'block', fontWeight: 600 }}>
+                          {doctor.qualification || doctor.specialization || 'Healthcare specialist'}
+                        </small>
+                      </span>
+                    </div>
+
+                    <div className="info-list">
+                      <div className="info-item"><strong>{doctor.specialization}</strong><span>Specialization</span></div>
+                      <div className="info-item"><strong>{doctor.experienceYears || 0} years</strong><span>Experience</span></div>
+                      <div className="info-item"><strong>{formatPrice(doctor.consultationFee)}</strong><span>Consultation price</span></div>
+                      <div className="info-item"><strong>{doctor.rating?.average || 0}</strong><span>Rating</span></div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedDoctor(doctor);
+                        setSelectedDate(formatDateInput(new Date()));
+                      }}
+                      className="btn btn-primary"
+                      style={{ marginTop: 16, width: '100%' }}
+                    >
+                      Book slot
+                    </button>
+
+                    {isSelected ? (
+                      <div className="booking-summary">
+                        <p style={{ fontWeight: 700, margin: 0 }}>Select a date</p>
+                        <div className="slot-grid">
+                          {getNextSevenDays().map((date) => {
+                            const value = formatDateInput(date);
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setSelectedDate(value)}
+                                className={`slot-btn ${selectedDate === value ? 'active' : ''}`}
+                              >
+                                {formatDisplayDate(date)}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div style={{ marginTop: 16 }}>
+                          <p style={{ fontWeight: 700, margin: 0 }}>Available 30-minute slots</p>
+                          {bookingError ? <p style={{ color: 'var(--danger)' }}>{bookingError}</p> : null}
+                          {loadingAvailability ? (
+                            <p style={{ color: 'var(--text-muted)' }}>Checking availability...</p>
+                          ) : schedule.length ? (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                              Doctor schedule: {schedule.map((slot) => `${slot.day} ${slot.start}-${slot.end}`).join(', ')}
+                            </p>
+                          ) : null}
+
+                          <div className="slot-grid">
+                            {availability.map((slot) => (
+                              <button
+                                key={`${slot.start}-${slot.end}`}
+                                type="button"
+                                onClick={() => setSelectedSlot(slot)}
+                                className={`slot-btn ${selectedSlot?.start === slot.start ? 'active' : ''}`}
+                              >
+                                {slot.start} - {slot.end}
+                              </button>
+                            ))}
+                          </div>
+
+                          {!loadingAvailability && selectedDate && !availability.length && !bookingError ? (
+                            <p style={{ color: 'var(--text-muted)' }}>No free slots found for the selected day.</p>
+                          ) : null}
+
+                          <button
+                            type="button"
+                            onClick={confirmBooking}
+                            disabled={!selectedSlot || paymentProcessing}
+                            className="btn btn-primary"
+                            style={{ marginTop: 16, width: '100%' }}
+                          >
+                            {paymentProcessing ? 'Creating payment order...' : 'Continue to payment'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            }) : (
+              <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+                <h3>No doctors found</h3>
+                <p>Adjust your search or filters to discover more doctors.</p>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      {pendingBooking ? (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <div className="panel-head">
+              <div>
+                <p className="badge" style={{ margin: 0, background: 'rgba(37,99,235,0.12)', color: 'var(--primary-blue)' }}>
+                  Razorpay test payment
+                </p>
+                <h2 style={{ marginTop: 10 }}>Pay consultation fee</h2>
+              </div>
+              <button type="button" className="btn btn-secondary" onClick={() => setPendingBooking(null)}>
+                Close
+              </button>
+            </div>
+
+            <div className="booking-summary">
+              <p><strong>Doctor:</strong> {selectedDoctor?.user?.name}</p>
+              <p><strong>Amount:</strong> {formatPrice(pendingBooking.payment?.amount)}</p>
+              <p><strong>Order:</strong> {pendingBooking.razorpay.orderId}</p>
+            </div>
+
+            <div className="slot-grid">
               {paymentOptions.map((option) => (
                 <button
                   key={option.id}
                   type="button"
                   onClick={() => setPaymentMethod(option.id)}
-                  className={`rounded-md border px-3 py-2 text-sm font-semibold ${paymentMethod === option.id ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600'}`}
+                  className={`slot-btn ${paymentMethod === option.id ? 'active' : ''}`}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
 
-            {paymentMethod === 'upi' && (
-              <div className="mt-5">
-                <p className="text-sm font-semibold text-slate-700">Choose UPI app</p>
-                <div className="mt-3 grid grid-cols-3 gap-2">
+            {paymentMethod === 'upi' ? (
+              <div className="field" style={{ marginTop: 16 }}>
+                <label>Choose UPI app</label>
+                <div className="slot-grid">
                   {upiApps.map((app) => (
                     <button
                       key={app.id}
                       type="button"
                       onClick={() => setUpiApp(app.id)}
-                      className={`rounded-md border px-3 py-3 text-sm ${upiApp === app.id ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600'}`}
+                      className={`slot-btn ${upiApp === app.id ? 'active' : ''}`}
                     >
                       {app.label}
                     </button>
                   ))}
                 </div>
-                <input className="input mt-3" value={`${user?.name || 'patient'}@upi`} readOnly />
+                <input style={{ marginTop: 12 }} value={`${user?.name || 'patient'}@upi`} readOnly />
               </div>
-            )}
+            ) : null}
 
-            {paymentMethod === 'card' && (
-              <div className="mt-5 grid gap-3">
-                <input
-                  className="input"
-                  placeholder="Card number"
-                  value={cardDetails.number}
-                  onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
-                />
-                <input
-                  className="input"
-                  placeholder="Name on card"
-                  value={cardDetails.name || user?.name || ''}
-                  onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    className="input"
-                    placeholder="MM/YY"
-                    value={cardDetails.expiry}
-                    onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
-                  />
-                  <input
-                    className="input"
-                    placeholder="CVV"
-                    value={cardDetails.cvv}
-                    onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
-                  />
+            {paymentMethod === 'card' ? (
+              <div className="auth-form">
+                <div className="field">
+                  <label>Card number</label>
+                  <input value={cardDetails.number} onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label>Name on card</label>
+                  <input value={cardDetails.name || user?.name || ''} onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value })} />
+                </div>
+                <div className="auth-inline-grid">
+                  <div className="field">
+                    <label>MM/YY</label>
+                    <input value={cardDetails.expiry} onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label>CVV</label>
+                    <input value={cardDetails.cvv} onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
+                  </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {paymentMethod === 'netbanking' && (
-              <select className="input mt-5" defaultValue="sbi">
-                <option value="sbi">State Bank of India</option>
-                <option value="hdfc">HDFC Bank</option>
-                <option value="icici">ICICI Bank</option>
-                <option value="axis">Axis Bank</option>
-              </select>
-            )}
+            {paymentMethod === 'netbanking' ? (
+              <div className="field" style={{ marginTop: 16 }}>
+                <label>Bank</label>
+                <select defaultValue="sbi">
+                  <option value="sbi">State Bank of India</option>
+                  <option value="hdfc">HDFC Bank</option>
+                  <option value="icici">ICICI Bank</option>
+                  <option value="axis">Axis Bank</option>
+                </select>
+              </div>
+            ) : null}
 
-            {bookingError && <p className="mt-4 rounded-md bg-red-50 p-2 text-sm text-red-700">{bookingError}</p>}
+            {bookingError ? <p style={{ color: 'var(--danger)' }}>{bookingError}</p> : null}
 
             <button
               type="button"
               onClick={completePayment}
               disabled={paymentProcessing}
-              className="btn-primary mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn btn-primary"
+              style={{ marginTop: 16, width: '100%' }}
             >
-              {paymentProcessing ? 'Processing payment...' : pendingBooking.razorpay.keyId ? 'Continue to Razorpay' : `Pay Rs. ${pendingBooking.payment?.amount}`}
+              {paymentProcessing ? 'Processing payment...' : pendingBooking.razorpay.keyId ? 'Continue to Razorpay' : `Pay ${formatPrice(pendingBooking.payment?.amount)}`}
             </button>
           </div>
         </div>
-      </div>
-    )}
+      ) : null}
     </div>
   );
 }

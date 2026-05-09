@@ -1,27 +1,100 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import '../styles/pages/Auth.css';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: 'patient1@healix.test', password: 'Password123!' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   async function submit(e) {
     e.preventDefault();
-    try { const user = await login(form); navigate(`/${user.role}`); } catch (err) { setError(err.response?.data?.message || err.message); }
+    setError('');
+    setLoading(true);
+    try {
+      const user = await login(form);
+      navigate(`/${user.role}`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
   }
+
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 p-4">
-      <form onSubmit={submit} className="card w-full max-w-md p-6">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="mt-1 text-sm text-slate-500">Sign in to continue care coordination.</p>
-        {error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <input className="input mt-5" placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input className="input mt-3" placeholder="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-        <button className="btn-primary mt-5 w-full">Login</button>
-        <Link className="mt-4 block text-center text-sm text-primary" to="/register">Create an account</Link>
-      </form>
-    </main>
+    <div className="auth-page">
+      <section className="auth-showcase float-soft">
+        <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+          Healix Secure Access
+        </span>
+        <h1>Healthcare access designed for modern care teams.</h1>
+        <p>
+          Log in to manage appointments, consultations, prescriptions, and patient history from one premium healthcare dashboard.
+        </p>
+
+        <div className="auth-feature-grid">
+          <article className="auth-feature-item">
+            <strong>Real-time sessions</strong>
+            <p>Video consultations with secure access controls.</p>
+          </article>
+          <article className="auth-feature-item">
+            <strong>Smart workflows</strong>
+            <p>Appointment and prescription lifecycle in one place.</p>
+          </article>
+          <article className="auth-feature-item">
+            <strong>Role-based dashboards</strong>
+            <p>Tailored patient, doctor, and admin experiences.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="auth-card fade-in-up">
+        <h2>Welcome Back</h2>
+        <p className="auth-subtitle">Sign in to continue with Healix.</p>
+
+        <form onSubmit={submit} className="auth-form">
+          <div className="field">
+            <label htmlFor="login-email">Email Address</label>
+            <input
+              id="login-email"
+              type="email"
+              required
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+
+          <div className="field password-wrap">
+            <label htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              placeholder="Enter your password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            <button className="password-toggle" type="button" onClick={() => setShowPassword((value) => !value)}>
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {error ? <p style={{ color: 'var(--danger)', margin: 0 }}>{error}</p> : null}
+
+          <button className="btn btn-primary" type="submit" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="auth-footer">
+          New to Healix? <Link to="/register">Create an account</Link>
+        </p>
+      </section>
+    </div>
   );
 }

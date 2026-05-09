@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { approveDoctor, getAvailability, getDoctor, listDoctors, updateSchedule } from '../controllers/doctor.controller.js';
+import { approveDoctor, getAvailability, getDoctor, listDoctors, updateProfile, updateSchedule } from '../controllers/doctor.controller.js';
 import { authorize, protect } from '../middleware/auth.middleware.js';
 const router = Router();
 router.get('/', protect, listDoctors);
@@ -7,4 +7,5 @@ router.get('/:id', protect, getDoctor);
 router.get('/:id/availability', protect, getAvailability);
 router.patch('/:id/approve', protect, authorize('admin'), approveDoctor);
 router.patch('/:id/schedule', protect, authorize('doctor', 'admin'), updateSchedule);
+router.patch('/:id/profile', protect, authorize('doctor', 'admin'), updateProfile);
 export default router;

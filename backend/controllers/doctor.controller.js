@@ -26,11 +26,12 @@ function buildHalfHourSlots(startTime, endTime) {
 }
 
 export async function listDoctors(req, res) {
-  const { q, specialization, rating, experience, availability } = req.query;
+  const { q, specialization, rating, language, experience, availability } = req.query;
   const profileQuery = {};
   if (q) profileQuery.$text = { $search: q };
   if (specialization) profileQuery.specialization = specialization;
   if (rating) profileQuery['rating.average'] = { $gte: Number(rating) };
+  if (language) profileQuery.languages = language;
   if (experience) profileQuery.experienceYears = { $gte: Number(experience) };
   if (availability) profileQuery['availableSlots.day'] = availability;
   const profiles = await DoctorProfile.find(profileQuery).populate({ path: 'user', match: { isApproved: true, isBlocked: false }, select: 'name email avatar phone' });
@@ -50,6 +51,20 @@ export async function approveDoctor(req, res) {
 
 export async function updateSchedule(req, res) {
   const profile = await DoctorProfile.findOneAndUpdate({ user: req.params.id }, { availableSlots: req.body.availableSlots }, { new: true });
+  res.json(profile);
+}
+
+export async function updateProfile(req, res) {
+  const { languages } = req.body;
+  const profile = await DoctorProfile.findOne({ user: req.params.id });
+  if (!profile) return res.status(404).json({ message: 'Doctor not found' });
+
+  if (req.user.role === 'doctor' && req.user._id.toString() !== req.params.id) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  profile.languages = Array.isArray(languages) ? languages : typeof languages === 'string' && languages ? languages.split(',').map((language) => language.trim()).filter(Boolean) : [];
+  await profile.save();
   res.json(profile);
 }
 
