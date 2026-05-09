@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { bookAppointment, listAppointments, saveHealthForm, updateAppointmentStatus, verifyAppointmentPayment } from '../controllers/appointment.controller.js';
+import { bookAppointment, listAppointments, saveHealthForm, updateAppointmentStatus, verifyAppointmentPayment, startConsultation, endConsultation } from '../controllers/appointment.controller.js';
 import { authorize, protect } from '../middleware/auth.middleware.js';
 const router = Router();
 router.use(protect);
@@ -8,4 +8,6 @@ router.post('/', authorize('patient'), bookAppointment);
 router.post('/:id/payment/verify', authorize('patient'), verifyAppointmentPayment);
 router.patch('/:id/status', authorize('doctor', 'admin'), updateAppointmentStatus);
 router.post('/:id/health-form', authorize('patient'), saveHealthForm);
+router.put('/:id/start', startConsultation);
+router.put('/:id/end', endConsultation);
 export default router;

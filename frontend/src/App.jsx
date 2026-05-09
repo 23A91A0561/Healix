@@ -12,7 +12,7 @@ import AdminDashboard from './dashboard/AdminDashboard.jsx';
 import ProtectedRoute from './routes/ProtectedRoute.jsx';
 import Appointments from './pages/Appointments.jsx';
 import Prescriptions from './pages/Prescriptions.jsx';
-import Consultation from './pages/Consultation.jsx';
+import VideoConsultation from './pages/VideoConsultation.jsx';
 import Assistant from './pages/Assistant.jsx';
 import Orders from './pages/Orders.jsx';
 import Notifications from './pages/Notifications.jsx';
@@ -36,7 +36,7 @@ export default function App() {
       <Route path="/appointments" element={protectedPage(<Appointments />)} />
       <Route path="/health-form" element={protectedPage(<HealthForm />, ['patient'])} />
       <Route path="/prescriptions" element={protectedPage(<Prescriptions />)} />
-      <Route path="/consultation/:id" element={protectedPage(<Consultation />, ['doctor', 'patient'])} />
+      <Route path="/consultation/:appointmentId/:roomId" element={protectedPage(<VideoConsultation />, ['doctor', 'patient'])} />
       <Route path="/assistant" element={protectedPage(<Assistant />, ['patient'])} />
       <Route path="/orders" element={protectedPage(<Orders />, ['patient'])} />
       <Route path="/notifications" element={protectedPage(<Notifications />)} />

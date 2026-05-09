@@ -6,6 +6,18 @@ function getWeekdayName(date) {
   return date.toLocaleDateString('en-US', { weekday: 'long' });
 }
 
+function parseDateOnly(dateString) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateOnly(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function toMinutes(time) {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
@@ -72,7 +84,7 @@ export async function getAvailability(req, res) {
   const { date } = req.query;
   if (!date) return res.status(400).json({ message: 'date is required' });
 
-  const selectedDate = new Date(date);
+  const selectedDate = parseDateOnly(date);
   if (Number.isNaN(selectedDate.getTime())) return res.status(400).json({ message: 'Invalid date' });
 
   const doctor = await DoctorProfile.findOne({ user: req.params.id }).populate('user', 'name email avatar phone');
@@ -109,11 +121,11 @@ export async function getAvailability(req, res) {
         const candidateEnd = toMinutes(candidate.end);
         return !bookedSlots.some((booked) => candidateStart < booked.end && candidateEnd > booked.start);
       })
-      .map((candidate) => ({ ...candidate, day: weekday, date: selectedDate.toISOString().slice(0, 10) }));
+      .map((candidate) => ({ ...candidate, day: weekday, date: formatDateOnly(selectedDate) }));
   });
 
   res.json({
-    date: selectedDate.toISOString().slice(0, 10),
+    date: formatDateOnly(selectedDate),
     day: weekday,
     schedule,
     availability

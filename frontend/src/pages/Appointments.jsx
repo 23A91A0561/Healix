@@ -39,7 +39,7 @@ export default function Appointments() {
               render: (appointment) => {
                 const live = isLive(appointment);
                 const canJoin = live && (appointment.patient?._id === user?._id || appointment.doctor?._id === user?._id);
-                return canJoin ? <Link className="btn-primary" to={`/consultation/${appointment._id}`}>Join Session</Link> : <span className="text-slate-400">{live ? 'Waiting for join' : '-'}</span>;
+                return canJoin ? <Link className="btn-primary" to={`/consultation/${appointment._id}/${appointment.consultationRoom}`}>Join Session</Link> : <span className="text-slate-400">{live ? 'Waiting for join' : '-'}</span>;
               }
             }
           ]}

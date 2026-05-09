@@ -24,6 +24,12 @@ export async function updateAppointmentStatus(req, res) {
   }
   appointment.status = req.body.status;
   appointment.cancellationReason = req.body.reason;
+  
+  // Generate consultation room when appointment is confirmed
+  if (req.body.status === 'confirmed' && !appointment.consultationRoom) {
+    appointment.consultationRoom = `heal-${appointment._id}`;
+  }
+  
   await appointment.save();
   if (appointment) await notify(req.app.get('io'), appointment.patient, { title: 'Appointment updated', type: 'appointment', message: `Status: ${appointment.status}` });
   res.json(appointment);
@@ -48,6 +54,12 @@ export async function verifyAppointmentPayment(req, res) {
   appointment.payment.providerPaymentId = paymentId;
   await appointment.payment.save();
   appointment.status = 'confirmed';
+  
+  // Generate consultation room when payment is verified
+  if (!appointment.consultationRoom) {
+    appointment.consultationRoom = `heal-${appointment._id}`;
+  }
+  
   await appointment.save();
 
   await notify(req.app.get('io'), appointment.doctor, { title: 'Appointment confirmed', type: 'appointment', message: 'A patient paid and confirmed a consultation.' });
@@ -62,4 +74,30 @@ export async function saveHealthForm(req, res) {
     { new: true, upsert: true }
   );
   res.json(profile);
+}
+
+export async function startConsultation(req, res) {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    
+    appointment.status = 'live';
+    await appointment.save();
+    res.json(appointment);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+export async function endConsultation(req, res) {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    
+    appointment.status = 'completed';
+    await appointment.save();
+    res.json(appointment);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 }

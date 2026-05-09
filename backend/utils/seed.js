@@ -69,6 +69,16 @@ const doctors = [
     consultationFee: 900,
     bio: 'Orthopedic specialist for joint pain, fractures, and mobility issues.',
     availableSlots: [{ day: 'Tuesday', start: '11:00', end: '15:00' }, { day: 'Friday', start: '09:00', end: '12:30' }]
+  },
+  {
+    name: 'Dr. Ravi Kumar',
+    email: 'doctor6@healix.test',
+    specialization: 'Neurology',
+    qualification: 'MBBS, MD Neurology',
+    experienceYears: 10,
+    consultationFee: 850,
+    bio: 'Neurologist specializing in migraines, seizures, and neurological disorders.',
+    availableSlots: [{ day: 'Saturday', start: '21:30', end: '23:30' }, { day: 'Sunday', start: '18:00', end: '22:00' }]
   }
 ];
 
