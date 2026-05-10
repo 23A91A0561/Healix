@@ -5,6 +5,32 @@ import Appointment from '../models/Appointment.js';
 
 export function initSockets(server) {
   const io = new Server(server, { cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true } });
+  const videoRooms = new Map();
+  const socketToVideoRoom = new Map();
+  const videoParticipants = new Map();
+  const maxVideoRoomSize = 4;
+
+  const emitVideoParticipants = (roomId) => {
+    const members = videoRooms.get(roomId) || new Set();
+    io.to(`video:${roomId}`).emit('video:participants', members.size);
+  };
+
+  const removeSocketFromVideoRoom = (socketId) => {
+    const roomId = socketToVideoRoom.get(socketId);
+    if (!roomId) return;
+
+    const members = videoRooms.get(roomId);
+    if (members) {
+      members.delete(socketId);
+      if (members.size === 0) videoRooms.delete(roomId);
+    }
+
+    socketToVideoRoom.delete(socketId);
+    videoParticipants.delete(socketId);
+    io.to(`video:${roomId}`).emit('video:user-left', socketId);
+    emitVideoParticipants(roomId);
+  };
+
   io.on('connection', (socket) => {
     socket.on('user:join', (userId) => socket.join(`user:${userId}`));
     socket.on('consultation:join', (room) => socket.join(`consultation:${room}`));
@@ -51,6 +77,81 @@ export function initSockets(server) {
     });
     ['call:offer', 'call:answer', 'call:ice', 'call:end'].forEach((event) => {
       socket.on(event, ({ room, data }) => socket.to(`consultation:${room}`).emit(event, data));
+    });
+
+    socket.on('video:join-room', ({ roomId, userName, userRole }) => {
+      const normalizedRoomId = roomId?.trim();
+      if (!normalizedRoomId) {
+        socket.emit('video:room-error', 'A valid room ID is required.');
+        return;
+      }
+
+      const existingRoom = socketToVideoRoom.get(socket.id);
+      if (existingRoom === normalizedRoomId) return;
+
+      if (existingRoom) {
+        socket.leave(`video:${existingRoom}`);
+        removeSocketFromVideoRoom(socket.id);
+      }
+
+      const members = videoRooms.get(normalizedRoomId) || new Set();
+      if (members.size >= maxVideoRoomSize) {
+        socket.emit('video:room-full', normalizedRoomId);
+        return;
+      }
+
+      videoRooms.set(normalizedRoomId, members);
+      members.add(socket.id);
+      socketToVideoRoom.set(socket.id, normalizedRoomId);
+      videoParticipants.set(socket.id, {
+        id: socket.id,
+        name: userName?.trim() || 'Participant',
+        role: userRole || 'participant',
+      });
+      socket.join(`video:${normalizedRoomId}`);
+
+      const otherUsers = [...members]
+        .filter((memberId) => memberId !== socket.id)
+        .map((memberId) => videoParticipants.get(memberId) || { id: memberId, name: 'Participant' });
+      socket.emit('video:all-users', otherUsers);
+      socket.to(`video:${normalizedRoomId}`).emit('video:user-joined', videoParticipants.get(socket.id));
+      emitVideoParticipants(normalizedRoomId);
+    });
+
+    socket.on('video:offer', ({ target, sdp }) => {
+      io.to(target).emit('video:offer', { caller: socket.id, sdp });
+    });
+
+    socket.on('video:answer', ({ target, sdp }) => {
+      io.to(target).emit('video:answer', { caller: socket.id, sdp });
+    });
+
+    socket.on('video:ice-candidate', ({ target, candidate }) => {
+      io.to(target).emit('video:ice-candidate', { caller: socket.id, candidate });
+    });
+
+    socket.on('video:chat-message', ({ message }) => {
+      const roomId = socketToVideoRoom.get(socket.id);
+      const normalizedMessage = message?.trim();
+      if (!roomId || !normalizedMessage) return;
+
+      io.to(`video:${roomId}`).emit('video:chat-message', {
+        id: `${socket.id}-${Date.now()}`,
+        sender: socket.id,
+        senderName: videoParticipants.get(socket.id)?.name || 'Participant',
+        message: normalizedMessage,
+        timestamp: Date.now(),
+      });
+    });
+
+    socket.on('video:leave-room', () => {
+      const roomId = socketToVideoRoom.get(socket.id);
+      if (roomId) socket.leave(`video:${roomId}`);
+      removeSocketFromVideoRoom(socket.id);
+    });
+
+    socket.on('disconnect', () => {
+      removeSocketFromVideoRoom(socket.id);
     });
   });
   return io;
