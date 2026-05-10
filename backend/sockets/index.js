@@ -150,6 +150,21 @@ export function initSockets(server) {
       removeSocketFromVideoRoom(socket.id);
     });
 
+    socket.on('vital-data', (data) => {
+      const { roomId, vitals } = data;
+      if (!roomId || !vitals) return;
+      socket.to(`video:${roomId}`).emit('vital-data-update', {
+        socketId: socket.id,
+        vitals,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('close-vitals', ({ roomId }) => {
+      if (!roomId) return;
+      socket.to(`video:${roomId}`).emit('vitals-monitoring-stopped', { socketId: socket.id });
+    });
+
     socket.on('disconnect', () => {
       removeSocketFromVideoRoom(socket.id);
     });

@@ -3,22 +3,26 @@ import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useVitals } from "../hooks/useVitals.js";
+import { VitalsMonitor } from "../components/VitalsMonitor.jsx";
+import { RemoteVitals } from "../components/RemoteVitals.jsx";
 import "../styles/pages/Consultation.css";
 
 const iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
 
-function VideoTile({ stream, muted = false, label, className = "" }) {
-  const videoRef = useRef(null);
+function VideoTile({ stream, muted = false, label, className = "", videoRef }) {
+  const internalRef = useRef(null);
+  const resolvedRef = videoRef || internalRef;
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (resolvedRef.current && stream) {
+      resolvedRef.current.srcObject = stream;
     }
-  }, [stream]);
+  }, [stream, resolvedRef]);
 
   return (
     <div className={`video-tile ${className}`}>
-      <video ref={videoRef} autoPlay playsInline muted={muted} />
+      <video ref={resolvedRef} autoPlay playsInline muted={muted} />
       <span className="video-label">{label}</span>
     </div>
   );
@@ -43,6 +47,15 @@ const VideoConsultation = () => {
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
 
+  const [measurementPhase, setMeasurementPhase] = useState(user?.role === "patient" ? "measuring" : "meeting");
+  const [preMeetingStream, setPreMeetingStream] = useState(null);
+  const [measurementCount, setMeasurementCount] = useState(0);
+  
+  const [socketInstance, setSocketInstance] = useState(null);
+  const [activeVideoElement, setActiveVideoElement] = useState(null);
+
+  const preMeetingVideoRef = useRef(null);
+  const localVideoRef = useRef(null);
   const socketRef = useRef(null);
   const localStreamRef = useRef(null);
   const cameraTrackRef = useRef(null);
@@ -61,6 +74,66 @@ const VideoConsultation = () => {
   const primaryLabel = primaryPeer?.name || displayName;
 
   useEffect(() => {
+    const socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+    setSocketInstance(socket);
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const vitals = useVitals(socketInstance, activeRoomId, activeVideoElement);
+
+  useEffect(() => {
+    if (measurementPhase !== "measuring") return;
+    
+    setActiveVideoElement(preMeetingVideoRef.current);
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        setPreMeetingStream(stream);
+        if (preMeetingVideoRef.current) {
+          preMeetingVideoRef.current.srcObject = stream;
+        }
+        setTimeout(() => {
+          vitals.startVitalsMonitoring();
+        }, 1000);
+      })
+      .catch((err) => {
+        console.error("Camera access denied during pre-meeting:", err);
+        setMeasurementPhase("meeting");
+      });
+
+    return () => {
+      vitals.stopVitalsMonitoring();
+    };
+  }, [measurementPhase, socketInstance]);
+
+  useEffect(() => {
+    if (measurementPhase === "measuring" && vitals.heartRate > 0) {
+      setMeasurementCount((prev) => {
+        const next = prev + 1;
+        if (next >= 3) {
+          setMeasurementPhase("completed");
+          setTimeout(() => {
+            setMeasurementPhase("meeting");
+          }, 2000);
+        }
+        return next;
+      });
+    }
+  }, [vitals.heartRate, measurementPhase]);
+
+  useEffect(() => {
+    if (measurementPhase === "meeting" && localVideoRef.current) {
+      setActiveVideoElement(localVideoRef.current);
+    }
+  }, [measurementPhase, localStream]);
+
+  useEffect(() => {
     if (!meetingJoined) return undefined;
     const timer = setInterval(() => setSeconds((prev) => prev + 1), 1000);
     return () => clearInterval(timer);
@@ -76,7 +149,7 @@ const VideoConsultation = () => {
   const markConsultationLive = async () => {
     if (!appointmentId) return;
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       await API.put(`/appointments/start/${appointmentId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error) {
       console.log(error);
@@ -86,7 +159,7 @@ const VideoConsultation = () => {
   const markConsultationEnded = async () => {
     if (!appointmentId) return;
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       await API.put(`/appointments/end/${appointmentId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error) {
       console.log(error);
@@ -123,12 +196,10 @@ const VideoConsultation = () => {
   };
 
   useEffect(() => {
+    if (measurementPhase !== "meeting" || !socketInstance) return;
+    
     let isMounted = true;
-    const socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
-      transports: ["websocket", "polling"],
-    });
-
-    socketRef.current = socket;
+    const socket = socketInstance;
 
     const syncStatus = () => {
       const peers = Object.values(peersRef.current);
@@ -226,9 +297,9 @@ const VideoConsultation = () => {
 
     const setup = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = preMeetingStream || await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (!isMounted) {
-          stream.getTracks().forEach((track) => track.stop());
+          if (!preMeetingStream) stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
@@ -237,12 +308,28 @@ const VideoConsultation = () => {
         setLocalStream(stream);
         setMeetingJoined(true);
         await markConsultationLive();
-        joinRoom();
+        
+        if (socket.connected) {
+          joinRoom();
+        }
       } catch (error) {
         setRoomError(error.message || "Unable to access camera and microphone.");
         setConnectionState("error");
       }
     };
+
+    socket.off("connect");
+    socket.off("connect_error");
+    socket.off("video:all-users");
+    socket.off("video:user-joined");
+    socket.off("video:offer");
+    socket.off("video:answer");
+    socket.off("video:ice-candidate");
+    socket.off("video:user-left");
+    socket.off("video:participants");
+    socket.off("video:room-full");
+    socket.off("video:room-error");
+    socket.off("video:chat-message");
 
     socket.on("connect", () => {
       setConnectionState("connected");
@@ -304,6 +391,12 @@ const VideoConsultation = () => {
     });
 
     setup();
+    
+    if (user?.role === "patient") {
+       setTimeout(() => {
+         if (!vitals.isMonitoring) vitals.startVitalsMonitoring();
+       }, 2000);
+    }
 
     return () => {
       isMounted = false;
@@ -311,9 +404,9 @@ const VideoConsultation = () => {
         hasEndedRef.current = true;
         markConsultationEnded();
       }
-      stopCall();
+      stopCall({ disconnect: false });
     };
-  }, [activeRoomId, displayName, user?.role]);
+  }, [activeRoomId, displayName, user?.role, measurementPhase, socketInstance]);
 
   const toggleMicrophone = () => {
     const stream = localStreamRef.current;
@@ -383,9 +476,34 @@ const VideoConsultation = () => {
       await markConsultationEnded();
     }
 
-    stopCall();
+    stopCall({ disconnect: true });
     navigate(user?.role === "doctor" ? "/doctor" : "/patient");
   };
+
+  if (measurementPhase === "measuring" || measurementPhase === "completed") {
+    return (
+      <div className="measurement-overlay" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', padding: 20 }}>
+        <video ref={preMeetingVideoRef} autoPlay playsInline muted style={{ width: 300, height: 300, objectFit: 'cover', borderRadius: '50%', border: '4px solid #2563eb', marginBottom: 20, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', transform: 'scaleX(-1)' }} />
+        
+        {measurementPhase === "measuring" ? (
+          <>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Measuring your heart rate...</h2>
+            <p style={{ color: '#64748b', marginBottom: 20 }}>Please look directly at the camera and stay still.</p>
+            <div style={{ width: '100%', maxWidth: 300, height: 8, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ width: `${(measurementCount / 3) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.5s ease-out' }} />
+            </div>
+            {vitals.heartRate > 0 && <p style={{ marginTop: 15, fontSize: '1.25rem', fontWeight: 'bold', color: '#2563eb' }}>{Math.round(vitals.heartRate)} bpm</p>}
+          </>
+        ) : (
+          <>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: 20 }}>✓</div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Measurement Completed!</h2>
+            <p style={{ color: '#64748b' }}>Joining the consultation room...</p>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="consultation-page">
@@ -452,7 +570,7 @@ const VideoConsultation = () => {
         {roomError ? <div className="call-alert">{roomError}</div> : null}
         <div className="single-video-stage">
           {primaryStream ? (
-            <VideoTile stream={primaryStream} muted={!primaryPeer} label={primaryLabel} className="primary-video" />
+            <VideoTile stream={primaryStream} muted={!primaryPeer} label={primaryLabel} className="primary-video" videoRef={!primaryPeer ? localVideoRef : undefined} />
           ) : (
             <div className="empty-stage">
               <h2>Waiting for participant</h2>
@@ -461,6 +579,22 @@ const VideoConsultation = () => {
           )}
         </div>
       </section>
+
+      {user?.role === "patient" && (
+        <VitalsMonitor
+          isMonitoring={vitals.isMonitoring}
+          heartRate={vitals.heartRate}
+          respiratoryRate={vitals.respiratoryRate}
+          hrv={vitals.hrv}
+          onStart={vitals.startVitalsMonitoring}
+          onStop={vitals.stopVitalsMonitoring}
+          error={vitals.error}
+        />
+      )}
+
+      {user?.role === "doctor" && (
+        <RemoteVitals remoteVitals={vitals.remoteVitals} />
+      )}
     </div>
   );
 };
