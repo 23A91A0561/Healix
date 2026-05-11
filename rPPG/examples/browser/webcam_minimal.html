@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalLens - Heart Rate Monitor</title>
+  <link rel="preconnect" href="https://api.rouast.com" crossorigin>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .video-section {
+      position: relative;
+      margin-bottom: 30px;
+      border-radius: 15px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #video {
+      width: 100%;
+      height: auto;
+      display: block;
+      transform: scaleX(-1);
+    }
+
+    .status-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .status-overlay.show {
+      opacity: 1;
+    }
+
+    .guidance-box {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      color: #856404;
+      text-align: center;
+      display: none;
+    }
+
+    .guidance-box.show {
+      display: block;
+    }
+
+    .guidance-box.error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+
+    .guidance-box.success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+
+    .vitals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .vital-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 15px;
+      padding: 20px;
+      color: white;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+      transition: transform 0.3s;
+    }
+
+    .vital-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .vital-card.inactive {
+      background: #e9ecef;
+      color: #6c757d;
+    }
+
+    .vital-label {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .vital-value {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .vital-unit {
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-start:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-start:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-stop {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-stop:hover:not(:disabled) {
+      background: #c82333;
+      transform: translateY(-2px);
+    }
+
+    .btn-stop:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .timer {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 15px;
+    }
+
+    .final-results {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+      display: none;
+      margin-top: 20px;
+    }
+
+    .final-results.show {
+      display: block;
+    }
+
+    .final-results h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .final-vitals {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+    }
+
+    .final-vital {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 15px;
+      backdrop-filter: blur(10px);
+    }
+
+    .final-vital-label {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+
+    .final-vital-value {
+      font-size: 28px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>❤️ VitalLens Monitor</h1>
+      <p>Real-time vital signs detection from your webcam</p>
+    </div>
+
+    <div class="content">
+      <div class="guidance-box" id="guidanceBox">
+        <div id="guidanceText">📹 Initializing camera...</div>
+      </div>
+
+      <div class="video-section">
+        <video id="video" autoplay muted playsinline></video>
+        <div class="status-overlay" id="statusOverlay">
+          <div id="statusText">Detecting face...</div>
+        </div>
+      </div>
+
+      <div class="timer" id="timer" style="display: none;">
+        Measuring for: <span id="timerValue">30</span>s
+      </div>
+
+      <div class="controls">
+        <button class="btn-start" id="startBtn" onclick="startMonitoring()">Start Monitoring</button>
+        <button class="btn-stop" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
+      </div>
+
+      <div class="vitals-grid" id="vitalsGrid"></div>
+
+      <div class="final-results" id="finalResults">
+        <h2>✓ Monitoring Complete</h2>
+        <div class="final-vitals" id="finalVitals"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { VitalLens } from '../vitallens.browser.js';
+
+    let vitallens = null;
+    let isMonitoring = false;
+    let monitoringDuration = 30; // seconds
+    let elapsedTime = 0;
+    let timerInterval = null;
+    let currentVitals = {};
+    let faceDetected = false;
+    let frameCount = 0;
+    let vitalsCount = 0;
+
+    const vitalsDisplay = {
+      heart_rate: { label: 'Heart Rate', unit: 'BPM', value: null },
+      respiratory_rate: { label: 'Respiratory Rate', unit: 'BrPM', value: null },
+      hrv_sdnn: { label: 'HRV (SDNN)', unit: 'ms', value: null },
+      hrv_rmssd: { label: 'HRV (RMSSD)', unit: 'ms', value: null }
+    };
+
+    async function initializeVitalLens() {
+      try {
+        const options = {
+          method: 'pos',
+          faceDetectionInterval: 10,
+          verbose: true
+        };
+
+        vitallens = new VitalLens(options);
+        showGuidance('📹 Initializing camera... Please allow camera access.', 'info');
+
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: false, 
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+        });
+        video.srcObject = stream;
+
+        await vitallens.setVideoStream(stream, video);
+
+        vitallens.addEventListener('vitals', (result) => {
+          console.log('Vitals result:', result); // Debug log
+          currentVitals = result;
+          vitalsCount++;
+          updateVitalsDisplay(result);
+          
+          if (result.face && result.face.coordinates && result.face.coordinates.length > 0) {
+            faceDetected = true;
+            showStatusOverlay(false);
+            updateGuidanceBasedOnFaceQuality(result);
+          } else {
+            faceDetected = false;
+            showStatusOverlay(true, '👤 Position your face in the center of the frame');
+            showGuidance('👤 Please position your face in the center of the camera frame', 'warning');
+          }
+        });
+
+        showGuidance('✓ Camera ready! Click "Start Monitoring" to begin.', 'success');
+        document.getElementById('startBtn').disabled = false;
+
+      } catch (error) {
+        showGuidance('❌ Camera access denied or not available', 'error');
+        console.error('Camera error:', error);
+      }
+    }
+
+    function updateGuidanceBasedOnFaceQuality(result) {
+      if (!faceDetected || !result.face || !result.face.coordinates) return;
+
+      const guidance = [];
+      
+      if (guidance.length > 0 && isMonitoring) {
+        showGuidance('⚠️ ' + guidance.join(' | '), 'warning');
+      } else if (isMonitoring && guidance.length === 0) {
+        showGuidance('✓ Face detected and properly positioned. Measuring vital signs...', 'success');
+      }
+    }
+
+    function updateVitalsDisplay(result) {
+      const grid = document.getElementById('vitalsGrid');
+      
+      if (!result || !result.vitals) {
+        console.log('No vitals data in result');
+        return;
+      }
+
+      // Clear and rebuild grid
+      grid.innerHTML = '';
+
+      // Extract vital signs from nested structure
+      const vitalsData = {
+        heart_rate: result.vitals.heart_rate,
+        respiratory_rate: result.vitals.respiratory_rate,
+        hrv_sdnn: result.vitals.hrv_sdnn,
+        hrv_rmssd: result.vitals.hrv_rmssd
+      };
+
+      for (const [key, vitalData] of Object.entries(vitalsData)) {
+        if (vitalData !== undefined && vitalData !== null) {
+          let displayValue = vitalData.value !== undefined ? vitalData.value : vitalData;
+          let confidence = vitalData.confidence !== undefined ? vitalData.confidence : null;
+          
+          if (typeof displayValue === 'number') {
+            displayValue = displayValue.toFixed(1);
+          }
+
+          const config = vitalsDisplay[key];
+          if (config) {
+            config.value = vitalData.value !== undefined ? vitalData.value : vitalData;
+            
+            const card = document.createElement('div');
+            card.className = 'vital-card';
+            
+            let confidenceText = confidence ? ` (${(confidence * 100).toFixed(0)}%)` : '';
+            
+            card.innerHTML = `
+              <div class="vital-label">${config.label}</div>
+              <div class="vital-value">${displayValue}</div>
+              <div class="vital-unit">${config.unit}${confidenceText}</div>
+            `;
+            
+            grid.appendChild(card);
+          }
+        }
+      }
+    }
+
+    async function startMonitoring() {
+      if (!vitallens) return;
+
+      isMonitoring = true;
+      elapsedTime = 0;
+      currentVitals = {};
+      vitalsCount = 0;
+      faceDetected = false;
+
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = false;
+      document.getElementById('timer').style.display = 'block';
+      document.getElementById('finalResults').classList.remove('show');
+
+      showGuidance('📹 Monitoring started. Position your face properly...', 'info');
+
+      vitallens.startVideoStream();
+
+      timerInterval = setInterval(() => {
+        elapsedTime++;
+        document.getElementById('timerValue').textContent = monitoringDuration - elapsedTime;
+
+        if (elapsedTime >= monitoringDuration) {
+          stopMonitoring();
+        }
+      }, 1000);
+    }
+
+    function stopMonitoring() {
+      if (!vitallens) return;
+
+      isMonitoring = false;
+      
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+
+      vitallens.stopVideoStream();
+
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('timer').style.display = 'none';
+      showStatusOverlay(false);
+
+      showGuidance('✓ Monitoring stopped.', 'success');
+      displayFinalResults();
+    }
+
+    function displayFinalResults() {
+      const finalResults = document.getElementById('finalResults');
+      const finalVitals = document.getElementById('finalVitals');
+
+      if (vitalsCount === 0 || !currentVitals.vitals) {
+        showGuidance('⚠️ No vital signs data collected. Please ensure your face is properly positioned.', 'warning');
+        return;
+      }
+
+      finalVitals.innerHTML = '';
+
+      const vitalsData = {
+        heart_rate: currentVitals.vitals.heart_rate,
+        respiratory_rate: currentVitals.vitals.respiratory_rate,
+        hrv_sdnn: currentVitals.vitals.hrv_sdnn,
+        hrv_rmssd: currentVitals.vitals.hrv_rmssd
+      };
+
+      for (const [key, vitalData] of Object.entries(vitalsData)) {
+        if (vitalData !== undefined && vitalData !== null) {
+          let displayValue = vitalData.value !== undefined ? vitalData.value : vitalData;
+          
+          if (typeof displayValue === 'number') {
+            displayValue = displayValue.toFixed(1);
+          }
+
+          const config = vitalsDisplay[key];
+          if (config) {
+            const vital = document.createElement('div');
+            vital.className = 'final-vital';
+            
+            vital.innerHTML = `
+              <div class="final-vital-label">${config.label}</div>
+              <div class="final-vital-value">${displayValue}</div>
+              <div style="font-size: 12px; margin-top: 5px;">${config.unit}</div>
+            `;
+            
+            finalVitals.appendChild(vital);
+          }
+        }
+      }
+
+      finalResults.classList.add('show');
+    }
+
+    function showGuidance(message, type = 'info') {
+      const box = document.getElementById('guidanceBox');
+      const text = document.getElementById('guidanceText');
+
+      box.classList.remove('error', 'success', 'warning');
+      box.className = 'guidance-box show ' + type;
+      text.textContent = message;
+    }
+
+    function showStatusOverlay(show, message = '') {
+      const overlay = document.getElementById('statusOverlay');
+      const statusText = document.getElementById('statusText');
+
+      if (show) {
+        overlay.classList.add('show');
+        if (message) statusText.textContent = message;
+      } else {
+        overlay.classList.remove('show');
+      }
+    }
+
+    // Expose functions to global scope
+    window.startMonitoring = startMonitoring;
+    window.stopMonitoring = stopMonitoring;
+
+    // Initialize on load
+    window.onload = () => {
+      showGuidance('🔄 Initializing VitalLens...', 'info');
+      initializeVitalLens();
+    };
+  </script>
+</body>
+</html>
