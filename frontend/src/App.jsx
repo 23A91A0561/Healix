@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home.jsx';
+import AmbulanceIntro from './pages/AmbulanceIntro.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Doctors from './pages/Doctors.jsx';
@@ -17,13 +18,15 @@ import Assistant from './pages/Assistant.jsx';
 import Orders from './pages/Orders.jsx';
 import Notifications from './pages/Notifications.jsx';
 import HealthForm from './pages/HealthForm.jsx';
+import CreatePrescription from './pages/CreatePrescription.jsx';
 
 const protectedPage = (children, roles) => <ProtectedRoute roles={roles}>{children}</ProtectedRoute>;
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<AmbulanceIntro />} />
+      <Route path="/home" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/doctors" element={protectedPage(<Doctors />)} />
@@ -36,7 +39,8 @@ export default function App() {
       <Route path="/appointments" element={protectedPage(<Appointments />)} />
       <Route path="/health-form" element={protectedPage(<HealthForm />, ['patient'])} />
       <Route path="/prescriptions" element={protectedPage(<Prescriptions />)} />
-      <Route path="/consultation/:appointmentId/:roomId" element={protectedPage(<VideoConsultation />, ['doctor', 'patient'])} />
+      <Route path="/prescription/:appointmentId" element={protectedPage(<CreatePrescription />, ['doctor'])} />
+      <Route path="/consultation/:appointmentId/:roomId?" element={protectedPage(<VideoConsultation />, ['doctor', 'patient'])} />
       <Route path="/assistant" element={protectedPage(<Assistant />, ['patient'])} />
       <Route path="/orders" element={protectedPage(<Orders />, ['patient'])} />
       <Route path="/notifications" element={protectedPage(<Notifications />)} />
@@ -44,3 +48,4 @@ export default function App() {
     </Routes>
   );
 }
+

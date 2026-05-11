@@ -33,11 +33,16 @@ const AppointmentCard = ({ appointment, isDoctor, approveAppointment }) => {
         {(appointment.status === "approved" || appointment.status === "live") && (
           <div className="appointment-actions">
             <Link
-              to={`/consultation/${appointment._id}/${appointment.consultationRoom}`}
+              to={`/consultation/${appointment._id}`}
               className="btn btn-primary"
             >
               {isDoctor ? "Start Consultation" : "Join Consultation"}
             </Link>
+            {isDoctor && (
+              <Link to={`/prescription/${appointment._id}`} className="btn btn-secondary" style={{ marginLeft: 8 }}>
+                Create Prescription
+              </Link>
+            )}
           </div>
         )}
 

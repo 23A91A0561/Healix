@@ -119,6 +119,9 @@ export default function DoctorDashboard() {
         const start = new Date(appointment.scheduledAt).getTime();
         const end = start + (appointment.durationMinutes || 30) * 60 * 1000;
         const live = appointment.status !== 'cancelled' && Date.now() >= start && Date.now() <= end;
+        if (appointment.status === 'completed') {
+          return <Link className="text-primary hover:underline font-medium" to={`/prescription/${appointment._id}`}>Create Prescription</Link>;
+        }
         return live ? <Link className="btn-light" to={`/consultation/${appointment._id}`}>Join Session</Link> : <span className="text-slate-400">-</span>;
       } }]} rows={data} /></div>
     </DashboardLayout>

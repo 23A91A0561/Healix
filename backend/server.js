@@ -13,9 +13,14 @@ const io = initSockets(server);
 
 app.set('io', io);
 
-connectDB().then(() => {
-  startReminderJobs(io);
-  server.listen(PORT, () => {
-    console.log(`Smart Healthcare API running on port ${PORT}`);
+connectDB()
+  .then(() => {
+    startReminderJobs(io);
+    server.listen(PORT, () => {
+      console.log(`Smart Healthcare API running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to connect to MongoDB:', error.message);
+    process.exit(1);
   });
-});
