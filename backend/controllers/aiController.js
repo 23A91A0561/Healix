@@ -1,5 +1,6 @@
 import Prescription from '../models/Prescription.js';
 import { generateDietPlan, generateMedicineExplanation, generatePrescriptionAnalysis } from '../ai/medicineExplanation.service.js';
+import { generateSpeech } from '../services/ttsService.js';
 
 const supportedLanguages = new Set(['en', 'hi', 'te']);
 
@@ -92,5 +93,29 @@ export async function analyzePrescription(req, res) {
     res.json(analysis);
   } catch (error) {
     return handleAiError(error, res);
+  }
+}
+
+export async function getSpeechAudio(req, res) {
+  try {
+    const { text, lang } = req.query;
+
+    if (!text) {
+      return res.status(400).json({ success: false, message: 'Text is required' });
+    }
+
+    const audioBuffer = await generateSpeech(text, lang || 'en-US');
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': audioBuffer.length,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'public, max-age=3600'
+    });
+
+    res.send(audioBuffer);
+  } catch (error) {
+    console.error('Speech Controller Error:', error);
+    res.status(500).json({ success: false, message: 'Speech generation failed' });
   }
 }

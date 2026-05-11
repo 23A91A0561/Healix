@@ -5,7 +5,8 @@ import {
   createPrescriptionDietPlan,
   createStaticPrescriptionDietPlan,
   explainPrescriptionMedicines,
-  explainStaticPrescriptionMedicines
+  explainStaticPrescriptionMedicines,
+  getSpeechAudio
 } from '../controllers/aiController.js';
 import { protect } from '../middleware/auth.middleware.js';
 const router = Router();
@@ -16,4 +17,5 @@ router.get('/explanation/:prescriptionId', protect, explainPrescriptionMedicines
 router.post('/diet', protect, createStaticPrescriptionDietPlan);
 router.get('/diet/:prescriptionId', protect, createPrescriptionDietPlan);
 router.get('/prescription-analysis/:prescriptionId', protect, analyzePrescription);
+router.get('/speak', getSpeechAudio);
 export default router;

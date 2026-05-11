@@ -100,6 +100,7 @@ export function initSockets(server) {
         return;
       }
 
+      console.log(`User joining video room: ${normalizedRoomId} (Name: ${userName}, Role: ${userRole})`);
       videoRooms.set(normalizedRoomId, members);
       members.add(socket.id);
       socketToVideoRoom.set(socket.id, normalizedRoomId);
@@ -113,6 +114,8 @@ export function initSockets(server) {
       const otherUsers = [...members]
         .filter((memberId) => memberId !== socket.id)
         .map((memberId) => videoParticipants.get(memberId) || { id: memberId, name: 'Participant' });
+      
+      console.log(`Sending all-users list to ${socket.id}. Count: ${otherUsers.length}`);
       socket.emit('video:all-users', otherUsers);
       socket.to(`video:${normalizedRoomId}`).emit('video:user-joined', videoParticipants.get(socket.id));
       emitVideoParticipants(normalizedRoomId);

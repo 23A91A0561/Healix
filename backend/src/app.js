@@ -44,7 +44,7 @@ function isAllowedOrigin(origin) {
   }
 }
 
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({
   origin(origin, callback) {
     if (isAllowedOrigin(origin)) return callback(null, true);

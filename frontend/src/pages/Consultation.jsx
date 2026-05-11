@@ -18,7 +18,14 @@ export default function Consultation() {
 
   useEffect(() => {
     socket.emit('consultation:join', id);
-    navigator.mediaDevices?.getUserMedia({ video: true, audio: true }).then((stream) => {
+    navigator.mediaDevices?.getUserMedia({
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 15, max: 30 },
+      },
+      audio: true,
+    }).then((stream) => {
       streamRef.current = stream;
       if (localRef.current) localRef.current.srcObject = stream;
     });
