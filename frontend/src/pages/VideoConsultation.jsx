@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext.jsx";
+import PrescriptionPanel from "../components/PrescriptionPanel.jsx";
 
 import "../styles/pages/Consultation.css";
 
 const iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
+const VITALS_SERVICE_URL = import.meta.env.VITE_RPPG_URL || "http://localhost:5001";
 
 function VideoTile({ stream, muted = false, label, className = "", videoRef }) {
   const internalRef = useRef(null);
@@ -44,11 +46,13 @@ const VideoConsultation = () => {
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const [isPrescriptionOpen, setIsPrescriptionOpen] = useState(false);
   const [measurementPhase, setMeasurementPhase] = useState("pre-consultation");
   const [vitalsState, setVitalsState] = useState({
     status: "Initializing...",
     bpm: 0, rr: 0, sbp: 0, dbp: 0, stress_level: "-", remaining_seconds: 15, measurement_complete: false
   });
+  const [vitalsServiceError, setVitalsServiceError] = useState("");
 
   const [socketInstance, setSocketInstance] = useState(null);
 
@@ -58,7 +62,8 @@ const VideoConsultation = () => {
     let retryCount = 0;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("http://localhost:5001/vitals_data");
+        const res = await fetch(`${VITALS_SERVICE_URL}/vitals_data`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`rPPG service responded ${res.status}`);
         const data = await res.json();
         setVitalsState(data);
         retryCount = 0; // Reset on success
@@ -213,6 +218,10 @@ const VideoConsultation = () => {
         userName: displayName,
         userRole: user?.role,
       });
+
+      if (vitalsState.measurement_complete) {
+        socket.emit("vital-data", { roomId: activeRoomId, vitals: vitalsState });
+      }
     };
 
     const upsertRemotePeer = (peerId, stream, name) => {
@@ -292,6 +301,7 @@ const VideoConsultation = () => {
 
     const setup = async () => {
       try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
               width: { ideal: 640 },
@@ -366,6 +376,10 @@ const VideoConsultation = () => {
         createPeer(participant, localStreamRef.current);
       }
       setConnectionState("connecting");
+
+      if (vitalsState.measurement_complete) {
+        socket.emit("vital-data", { roomId: activeRoomId, vitals: vitalsState });
+      }
     });
 
     socket.on("video:offer", async ({ caller, sdp }) => {
@@ -404,6 +418,10 @@ const VideoConsultation = () => {
     socket.on("video:room-error", setRoomError);
     socket.on("video:chat-message", (message) => {
       setMessages((current) => [...current, { ...message, isSelf: message.sender === socket.id }]);
+    });
+    
+    socket.on("vital-data-update", (data) => {
+      setVitalsState(data.vitals);
     });
 
     setup();
@@ -490,10 +508,19 @@ const VideoConsultation = () => {
     navigate(user?.role === "doctor" ? "/doctor" : "/patient");
   };
 
+  const handleContinueToMeeting = async () => {
+    try {
+      await fetch(`${VITALS_SERVICE_URL}/stop_camera`);
+    } catch (e) {
+      console.log("Failed to stop camera API", e);
+    }
+    setMeasurementPhase("meeting");
+  };
+
 
 
   return (
-    <div className="consultation-page">
+    <div className={`consultation-page ${isPrescriptionOpen ? 'with-prescription' : ''}`}>
       <aside className="consultation-sidebar">
         <div className="consultation-brand">
           <h1>🎥 Healix Meet</h1>
@@ -513,6 +540,30 @@ const VideoConsultation = () => {
               <span>{roomError || (connectionState === 'connected' ? 'Connected' : connectionState === 'waiting' ? 'Waiting for participant' : connectionState)}</span>
             </div>
           </div>
+
+          {vitalsState.measurement_complete && measurementPhase === "meeting" && (
+            <div className="vitals-summary" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#2a2a35', borderRadius: '8px' }}>
+              <h3 style={{ fontSize: '14px', color: '#00E676', marginBottom: '10px' }}>Patient Vitals</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
+                <div style={{ padding: '8px', backgroundColor: '#1e1e24', borderRadius: '4px' }}>
+                  <span style={{ color: '#aaa', display: 'block' }}>HR (bpm)</span>
+                  <strong style={{ color: '#ff5252', fontSize: '16px' }}>{vitalsState.bpm}</strong>
+                </div>
+                <div style={{ padding: '8px', backgroundColor: '#1e1e24', borderRadius: '4px' }}>
+                  <span style={{ color: '#aaa', display: 'block' }}>Resp Rate</span>
+                  <strong style={{ color: '#448aff', fontSize: '16px' }}>{vitalsState.rr}</strong>
+                </div>
+                <div style={{ padding: '8px', backgroundColor: '#1e1e24', borderRadius: '4px' }}>
+                  <span style={{ color: '#aaa', display: 'block' }}>Blood Press.</span>
+                  <strong style={{ color: '#69f0ae', fontSize: '16px' }}>{vitalsState.sbp}/{vitalsState.dbp}</strong>
+                </div>
+                <div style={{ padding: '8px', backgroundColor: '#1e1e24', borderRadius: '4px' }}>
+                  <span style={{ color: '#aaa', display: 'block' }}>Stress</span>
+                  <strong style={{ color: '#ffd740', fontSize: '16px' }}>{vitalsState.stress_level}</strong>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {connectionState !== 'connected' ? (
@@ -520,6 +571,14 @@ const VideoConsultation = () => {
             <p>Waiting for the other participant to join...</p>
           </div>
         ) : null}
+
+        {user?.role === 'doctor' && (
+          <div style={{ marginTop: 16 }}>
+            <button onClick={() => setIsPrescriptionOpen(!isPrescriptionOpen)} className="btn btn-primary w-full">
+              {isPrescriptionOpen ? 'Close Prescription' : 'Create Prescription'}
+            </button>
+          </div>
+        )}
 
         <form className="consultation-chat" onSubmit={sendMessage}>
           <strong>Room chat</strong>
@@ -557,7 +616,9 @@ const VideoConsultation = () => {
         {measurementPhase === "pre-consultation" ? (
           <div className="pre-consultation-stage" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', backgroundColor: '#1e1e24', color: 'white', borderRadius: '12px' }}>
             <h2 style={{ marginBottom: '10px', color: '#00E676' }}>Pre-Consultation Vitals Check</h2>
-            <p style={{ marginBottom: '20px', fontSize: '18px', color: '#ccc' }}>{vitalsState.status} {(!vitalsState.measurement_complete && vitalsState.remaining_seconds < 15) ? `(${vitalsState.remaining_seconds}s remaining)` : ""}</p>
+            <p style={{ marginBottom: '20px', fontSize: '18px', color: vitalsServiceError ? '#ff8a80' : '#ccc', textAlign: 'center', maxWidth: '620px' }}>
+              {vitalsServiceError || vitalsState.status} {(!vitalsServiceError && !vitalsState.measurement_complete && vitalsState.remaining_seconds < 15) ? `(${vitalsState.remaining_seconds}s remaining)` : ""}
+            </p>
             
             <div className={`video-container ${!vitalsState.measurement_complete ? 'scanning-active' : ''}`} style={{ border: '4px solid #00E676', borderRadius: '50%', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0, 230, 118, 0.3)', backgroundColor: '#000', marginBottom: '30px', width: '300px', height: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                 <img 
@@ -598,7 +659,7 @@ const VideoConsultation = () => {
             </div>
 
             <button 
-              onClick={() => setMeasurementPhase("meeting")}
+              onClick={handleContinueToMeeting}
               style={{ padding: '12px 24px', fontSize: '16px', backgroundColor: '#00E676', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background-color 0.2s', opacity: vitalsState.measurement_complete ? 1 : 0.5 }}
               onMouseOver={(e) => vitalsState.measurement_complete && (e.target.style.backgroundColor = '#00c853')}
               onMouseOut={(e) => vitalsState.measurement_complete && (e.target.style.backgroundColor = '#00E676')}
@@ -624,6 +685,11 @@ const VideoConsultation = () => {
         )}
       </section>
 
+      {isPrescriptionOpen && (
+        <aside className="prescription-sidebar">
+          <PrescriptionPanel appointmentId={appointmentId} onClose={() => setIsPrescriptionOpen(false)} />
+        </aside>
+      )}
     </div>
   );
 };

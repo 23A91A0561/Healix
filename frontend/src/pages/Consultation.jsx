@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaDesktop, FaMicrophone, FaMicrophoneSlash, FaPhoneSlash, FaVideo, FaVideoSlash } from 'react-icons/fa';
 import DashboardLayout from '../layouts/DashboardLayout.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -99,7 +99,11 @@ export default function Consultation() {
         <aside className="card p-5">
           <h2 className="font-semibold">Consultation tools</h2>
           <p className="mt-3 text-sm text-slate-500">Timer: {Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</p>
-          <button className="btn-primary mt-5 w-full">Create Prescription</button>
+          {user?.role === 'doctor' && (
+            <Link to={`/prescription/${id}`} className="btn btn-primary mt-5 w-full">
+              Create Prescription
+            </Link>
+          )}
           <div className="mt-4 h-64 rounded-md bg-slate-50 p-3 text-sm text-slate-500">Chat and uploaded reports appear here.</div>
         </aside>
       </div>

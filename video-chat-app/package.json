@@ -1,0 +1,31 @@
+{
+  "name": "video-chat-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node -e \"process.env.NODE_ENV='development'; require('ts-node').register({ project: 'tsconfig.server.json' }); require('./server.ts');\"",
+    "build": "next build && tsc -p tsconfig.server.json",
+    "start": "node -e \"process.env.NODE_ENV='production'; require('./dist-server/server.js');\"",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "uuid": "^13.0.0",
+    "vitallens": "^0.4.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.37",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

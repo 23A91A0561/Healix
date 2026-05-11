@@ -1,0 +1,315 @@
+<style>
+  :host {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+    overflow: hidden;
+    background: #000000;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    box-sizing: border-box;
+    --ppg-color: #E62100;       /* Main Red for HR */
+    --ppg-color-dark: #b01b00;  /* Darker Red for HR unit */
+    --resp-color: #00A3FC;      /* Main Blue for RR */
+    --resp-color-dark: #0056b3; /* Darker Blue for RR unit */
+  }
+  /* Navbar area */
+  #navbar {
+    flex: 0 0 auto;
+    padding: 10px 15px;
+    background: #1c1c1e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #333;
+  }
+  .logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: white;
+  }
+  .logo-container img {
+    height: 36px;
+    border-radius: 8px;
+    margin-right: 12px;
+  }
+  .logo-text .powered-by {
+    font-size: 11px;
+    font-weight: 300;
+    color: #a0a0a0;
+  }
+  .logo-text .api-name {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  /* Main content area */
+  #main-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  #video-container,
+  #vitals-container {
+    flex: 1 1 0;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    background: #000000;
+  }
+  #vitals-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    box-sizing: border-box;
+    min-height: 0;
+  }
+  .chart-wrapper {
+    display: flex;
+    flex: 1 1 0;
+    gap: 10px;
+    min-height: 0;
+  }
+  .chart-container {
+    flex-grow: 1;
+    position: relative;
+    min-width: 0;
+  }
+  .chart-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .vital-stats {
+    flex-shrink: 0;
+    width: 120px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .vital-stats p {
+    margin: 4px 0 0;
+    white-space: nowrap;
+  }
+  .vital-stats .value {
+    font-size: 42px;
+    font-weight: 600;
+  }
+  .vital-stats .label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .vital-stats .unit {
+    font-size: 14px;
+    font-weight: 400;
+  }
+  .vital-stats .label, .vital-stats .value {
+    transition: color 0.3s ease;
+  }
+  #ppgStats .label,
+  #ppgStats .value {
+    color: var(--ppg-color);
+  }
+  #ppgStats .unit {
+    color: var(--ppg-color-dark);
+  }
+  #respStats .label,
+  #respStats .value {
+    color: var(--resp-color);
+  }
+  #respStats .unit {
+    color: var(--resp-color-dark);
+  }
+  #hrv-stats-container {
+    margin-top: 8px; 
+    padding-top: 8px;
+  }
+  .hrv-stat {
+      display: flex;
+      justify-content: flex-start;
+      align-items: baseline;
+      font-size: 14px;
+      color: #E62100; 
+      gap: 6px;
+  }
+  .hrv-stat:not(:last-child) {
+      margin-bottom: 4px; 
+  }
+  .hrv-label {
+      font-weight: 300;
+      opacity: 0.8;
+  }
+  .hrv-value {
+      font-weight: 600;
+  }
+  .hrv-unit {
+      font-weight: 300;
+      opacity: 0.7;
+      padding-left: 4px;
+  }
+  .hrv-metric .value { font-weight: 600; }
+  .hrv-metric .unit { color: #a0a0a0; }
+  /* Controls area */
+  #controls {
+    flex: 0 0 auto;
+    background: #111;
+    padding: 10px; /* RESTORED this padding */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #controls button, #navbar > button, #methodSelect {
+    background-color: #333;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  #controls button:hover, #navbar > button:hover, #methodSelect:hover {
+    background-color: #444;
+  }
+  #tabs-container {
+    display: flex;
+    background: #2c2c2e;
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .tab-button {
+    background: transparent;
+    border: none;
+    color: #98989d;
+    border-radius: 6px;
+    padding: 6px 16px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab-button.active {
+    background: #464649;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .tab-button:hover:not(.active) {
+    color: #ffffff;
+  }
+  /* Other styles */
+  #video-container video, #video-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+  #video-container canvas { pointer-events: none; }
+  #dropZone { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); border: 2px dashed #00A3FC; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: #00A3FC; background: rgba(0, 0, 0, 0.8); cursor: pointer; box-sizing: border-box; padding: 20px; z-index: 3; display: none; }
+  #dropZone.hover { background: rgba(0, 123, 255, 0.2); }
+  .spinner { position: absolute; z-index: 3; display: none; top: 50%; left: 50%; width: 40px; height: 40px; transform: translate(-50%, -50%); border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+  .dim-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2; display: none; }
+  .progressMessage { position: absolute; z-index: 3; display: none; top: calc(50% + 50px); left: 50%; transform: translateX(-50%); font-size: 14px; color: white; text-align: center; }
+  #errorPopup { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #b71c1c; color: white; padding: 10px 20px; border-radius: 5px; z-index: 1000; display: none; }
+  #methodContainer, #hintsContainer, #fpsDisplay { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  /* Tooltip Styles */
+  .tooltip { position: relative; display: inline-block; cursor: pointer; }
+  .tooltip .tooltip-label, .tooltip .tooltip-icon { vertical-align: middle; }
+  .tooltip .tooltip-icon { background: #00A3FC; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; font-weight: bold; }
+  .tooltip .tooltip-content { visibility: hidden; opacity: 0; position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%); background-color: #333; color: #fff; padding: 10px; border-radius: 6px; width: max-content; max-width: 300px; text-align: left; transition: opacity 0.3s, visibility 0.3s; }
+  .tooltip:hover .tooltip-content { visibility: visible; opacity: 1; }
+  .tooltip .tooltip-content ul { margin: 0; padding: 0 0 0 20px; list-style: disc; }
+  .tooltip .tooltip-content li { margin-bottom: 5px; }
+  .tooltip .tooltip-content li:last-child { margin-bottom: 0; }
+</style>
+
+<div id="errorPopup">Error message goes here</div>
+<div id="navbar">
+  <a href="https://www.rouast.com/api/" target="_blank" class="logo-link">
+    <div class="logo-container"><img src="__LOGO_URL__" alt="VitalLens API" /></div>
+    <div class="logo-text"><div class="powered-by">Powered by</div><div class="api-name">VitalLens API</div></div>
+  </a>
+  <div id="tabs-container">
+    <button id="webcamModeButton" class="tab-button">Webcam</button>
+    <button id="fileModeButton" class="tab-button">File</button>
+  </div>
+  <button id="downloadButton">Download JSON</button>
+</div>
+<div id="main-content">
+  <div id="video-container">
+    <video id="video" autoplay muted playsinline style="display: none;"></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <div id="dropZone">Drag & drop a video file here or click to select one</div>
+    <div id="videoDimmer" class="dim-overlay"></div>
+    <div id="videoSpinner" class="spinner"></div>
+    <div id="videoProgressMessage" class="progressMessage"></div>
+    <input type="file" id="videoInput" accept="video/*" style="display: none;" />
+  </div>
+  <div id="controls">
+    <div id="fpsDisplay"><span class="fps-label">FPS:</span><span class="fps-value">N/A</span></div>
+    <div id="methodContainer">
+      <label for="methodSelect">Method:</label>
+      <select id="methodSelect">
+        <option value="vitallens" selected>VitalLens</option><option value="pos">POS</option><option value="chrom">CHROM</option><option value="g">G</option>
+      </select>
+    </div>
+    <div id="hintsContainer">
+      <div class="tooltip guidelines-tooltip">
+        <span class="tooltip-label">Tips</span>
+        <span class="tooltip-icon">?</span>
+        <div class="tooltip-content">
+          <ul>
+            <li>Minimize camera movement.</li>
+            <li>Keep the subject still and facing the camera.</li>
+            <li>Use bright and steady light source.</li>
+            <li>Ensure a stable internet connection.</li>
+            <li>Use as little video compression as possible if using a video file.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="tooltip file-mode-tooltip" style="display: none;">
+        <span class="tooltip-label">Slow?</span>
+        <span class="tooltip-icon">?</span>
+        <div class="tooltip-content">
+          <ul>
+            <li>Video processing in the browser can take a while for large files.</li>
+            <li>For more performance, use this client in Node.js or our Python client.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <button id="controlButton">Pause</button>
+  </div>
+  <div id="vitals-container">
+    <div id="vitalsDimmer" class="dim-overlay"></div>
+    <div id="vitalsSpinner" class="spinner"></div>
+    <div id="vitalsProgressMessage" class="progressMessage"></div>
+    <div class="chart-wrapper">
+      <div class="chart-container"><canvas id="ppgChart"></canvas></div>
+      <div class="vital-stats" id="ppgStats">
+        <p class="label">HR <span class="unit">bpm</span></p>
+        <p class="value" id="hr-value">--</p>
+
+        <div id="hrv-stats-container">
+          <div class="hrv-stat">
+            <span class="hrv-label">SDNN</span>
+            <span id="hrv-sdnn" class="hrv-value">--</span>
+            <span class="hrv-unit">ms</span>
+          </div>
+          <div class="hrv-stat">
+            <span class="hrv-label">RMSSD</span>
+            <span id="hrv-rmssd" class="hrv-value">--</span>
+            <span class="hrv-unit">ms</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrapper">
+      <div class="chart-container"><canvas id="respChart"></canvas></div>
+      <div class="vital-stats" id="respStats">
+        <p class="label">RR <span class="unit">bpm</span></p>
+        <p class="value" id="rr-value">--</p>
+      </div>
+    </div>
+  </div>
+</div>
