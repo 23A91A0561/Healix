@@ -3,9 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useVitals } from "../hooks/useVitals.js";
-import { VitalsMonitor } from "../components/VitalsMonitor.jsx";
-import { RemoteVitals } from "../components/RemoteVitals.jsx";
+
 import "../styles/pages/Consultation.css";
 
 const iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
@@ -46,15 +44,34 @@ const VideoConsultation = () => {
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const [measurementPhase, setMeasurementPhase] = useState("pre-consultation");
+  const [vitalsState, setVitalsState] = useState({
+    status: "Initializing...",
+    bpm: 0, rr: 0, sbp: 0, dbp: 0, stress_level: "-", remaining_seconds: 15, measurement_complete: false
+  });
 
-  const [measurementPhase, setMeasurementPhase] = useState(user?.role === "patient" ? "measuring" : "meeting");
-  const [preMeetingStream, setPreMeetingStream] = useState(null);
-  const [measurementCount, setMeasurementCount] = useState(0);
-  
   const [socketInstance, setSocketInstance] = useState(null);
-  const [activeVideoElement, setActiveVideoElement] = useState(null);
 
-  const preMeetingVideoRef = useRef(null);
+  useEffect(() => {
+    if (measurementPhase !== "pre-consultation") return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("http://localhost:5001/vitals_data");
+        const data = await res.json();
+        setVitalsState(data);
+      } catch (err) {
+        console.error("Failed to fetch vitals", err);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [measurementPhase]);
+
+  useEffect(() => {
+    if (user && user.role === "doctor") {
+      setMeasurementPhase("meeting");
+    }
+  }, [user]);
+
   const localVideoRef = useRef(null);
   const socketRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -85,53 +102,7 @@ const VideoConsultation = () => {
     };
   }, []);
 
-  const vitals = useVitals(socketInstance, activeRoomId, activeVideoElement);
-
-  useEffect(() => {
-    if (measurementPhase !== "measuring") return;
-    
-    setActiveVideoElement(preMeetingVideoRef.current);
-
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        setPreMeetingStream(stream);
-        if (preMeetingVideoRef.current) {
-          preMeetingVideoRef.current.srcObject = stream;
-        }
-        setTimeout(() => {
-          vitals.startVitalsMonitoring();
-        }, 1000);
-      })
-      .catch((err) => {
-        console.error("Camera access denied during pre-meeting:", err);
-        setMeasurementPhase("meeting");
-      });
-
-    return () => {
-      vitals.stopVitalsMonitoring();
-    };
-  }, [measurementPhase, socketInstance]);
-
-  useEffect(() => {
-    if (measurementPhase === "measuring" && vitals.heartRate > 0) {
-      setMeasurementCount((prev) => {
-        const next = prev + 1;
-        if (next >= 3) {
-          setMeasurementPhase("completed");
-          setTimeout(() => {
-            setMeasurementPhase("meeting");
-          }, 2000);
-        }
-        return next;
-      });
-    }
-  }, [vitals.heartRate, measurementPhase]);
-
-  useEffect(() => {
-    if (measurementPhase === "meeting" && localVideoRef.current) {
-      setActiveVideoElement(localVideoRef.current);
-    }
-  }, [measurementPhase, localStream]);
+  // Removed vitals related hooks and effects
 
   useEffect(() => {
     if (!meetingJoined) return undefined;
@@ -297,9 +268,16 @@ const VideoConsultation = () => {
 
     const setup = async () => {
       try {
-        const stream = preMeetingStream || await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              frameRate: { ideal: 15, max: 30 },
+            },
+            audio: true,
+          });
         if (!isMounted) {
-          if (!preMeetingStream) stream.getTracks().forEach((track) => track.stop());
+          stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
@@ -391,12 +369,6 @@ const VideoConsultation = () => {
     });
 
     setup();
-    
-    if (user?.role === "patient") {
-       setTimeout(() => {
-         if (!vitals.isMonitoring) vitals.startVitalsMonitoring();
-       }, 2000);
-    }
 
     return () => {
       isMounted = false;
@@ -480,30 +452,7 @@ const VideoConsultation = () => {
     navigate(user?.role === "doctor" ? "/doctor" : "/patient");
   };
 
-  if (measurementPhase === "measuring" || measurementPhase === "completed") {
-    return (
-      <div className="measurement-overlay" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', padding: 20 }}>
-        <video ref={preMeetingVideoRef} autoPlay playsInline muted style={{ width: 300, height: 300, objectFit: 'cover', borderRadius: '50%', border: '4px solid #2563eb', marginBottom: 20, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', transform: 'scaleX(-1)' }} />
-        
-        {measurementPhase === "measuring" ? (
-          <>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Measuring your heart rate...</h2>
-            <p style={{ color: '#64748b', marginBottom: 20 }}>Please look directly at the camera and stay still.</p>
-            <div style={{ width: '100%', maxWidth: 300, height: 8, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: `${(measurementCount / 3) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.5s ease-out' }} />
-            </div>
-            {vitals.heartRate > 0 && <p style={{ marginTop: 15, fontSize: '1.25rem', fontWeight: 'bold', color: '#2563eb' }}>{Math.round(vitals.heartRate)} bpm</p>}
-          </>
-        ) : (
-          <>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: 20 }}>✓</div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Measurement Completed!</h2>
-            <p style={{ color: '#64748b' }}>Joining the consultation room...</p>
-          </>
-        )}
-      </div>
-    );
-  }
+
 
   return (
     <div className="consultation-page">
@@ -567,34 +516,61 @@ const VideoConsultation = () => {
       </aside>
 
       <section className="consultation-stage">
-        {roomError ? <div className="call-alert">{roomError}</div> : null}
-        <div className="single-video-stage">
-          {primaryStream ? (
-            <VideoTile stream={primaryStream} muted={!primaryPeer} label={primaryLabel} className="primary-video" videoRef={!primaryPeer ? localVideoRef : undefined} />
-          ) : (
-            <div className="empty-stage">
-              <h2>Waiting for participant</h2>
-              <p>Share this consultation link with the patient or doctor to start the call.</p>
+        {measurementPhase === "pre-consultation" ? (
+          <div className="pre-consultation-stage" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', backgroundColor: '#1e1e24', color: 'white', borderRadius: '12px' }}>
+            <h2 style={{ marginBottom: '10px', color: '#00E676' }}>Pre-Consultation Vitals Check</h2>
+            <p style={{ marginBottom: '20px', fontSize: '18px', color: '#ccc' }}>{vitalsState.status} {(!vitalsState.measurement_complete && vitalsState.remaining_seconds < 15) ? `(${vitalsState.remaining_seconds}s remaining)` : ""}</p>
+            
+            <div className="video-container" style={{ border: '4px solid #00E676', borderRadius: '50%', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0, 230, 118, 0.3)', backgroundColor: '#000', marginBottom: '30px', width: '300px', height: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <img src="http://localhost:5001/video_feed" alt="Pre-consultation vitals scanner" crossOrigin="anonymous" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
             </div>
-          )}
-        </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px', textAlign: 'center', width: '80%', maxWidth: '500px' }}>
+              <div style={{ backgroundColor: '#2a2a35', padding: '15px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '14px', color: '#aaa' }}>Heart Rate</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff5252' }}>{vitalsState.bpm || "--"} <span style={{fontSize: '14px', fontWeight: 'normal'}}>BPM</span></div>
+              </div>
+              <div style={{ backgroundColor: '#2a2a35', padding: '15px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '14px', color: '#aaa' }}>Respiratory Rate</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#448aff' }}>{vitalsState.rr || "--"} <span style={{fontSize: '14px', fontWeight: 'normal'}}>bpm</span></div>
+              </div>
+              <div style={{ backgroundColor: '#2a2a35', padding: '15px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '14px', color: '#aaa' }}>Blood Pressure</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#69f0ae' }}>{vitalsState.sbp || "--"}/{vitalsState.dbp || "--"} <span style={{fontSize: '14px', fontWeight: 'normal'}}>mmHg</span></div>
+              </div>
+              <div style={{ backgroundColor: '#2a2a35', padding: '15px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '14px', color: '#aaa' }}>Stress Level</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffd740' }}>{vitalsState.stress_level || "-"}</div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setMeasurementPhase("meeting")}
+              style={{ padding: '12px 24px', fontSize: '16px', backgroundColor: '#00E676', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background-color 0.2s', opacity: vitalsState.measurement_complete ? 1 : 0.5 }}
+              onMouseOver={(e) => vitalsState.measurement_complete && (e.target.style.backgroundColor = '#00c853')}
+              onMouseOut={(e) => vitalsState.measurement_complete && (e.target.style.backgroundColor = '#00E676')}
+              disabled={!vitalsState.measurement_complete}
+            >
+              {vitalsState.measurement_complete ? "Continue to Meeting" : "Please wait..."}
+            </button>
+          </div>
+        ) : (
+          <>
+            {roomError ? <div className="call-alert">{roomError}</div> : null}
+            <div className="single-video-stage">
+              {primaryStream ? (
+                <VideoTile stream={primaryStream} muted={!primaryPeer} label={primaryLabel} className="primary-video" videoRef={!primaryPeer ? localVideoRef : undefined} />
+              ) : (
+                <div className="empty-stage">
+                  <h2>Waiting for participant</h2>
+                  <p>Share this consultation link with the patient or doctor to start the call.</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
-      {user?.role === "patient" && (
-        <VitalsMonitor
-          isMonitoring={vitals.isMonitoring}
-          heartRate={vitals.heartRate}
-          respiratoryRate={vitals.respiratoryRate}
-          hrv={vitals.hrv}
-          onStart={vitals.startVitalsMonitoring}
-          onStop={vitals.stopVitalsMonitoring}
-          error={vitals.error}
-        />
-      )}
-
-      {user?.role === "doctor" && (
-        <RemoteVitals remoteVitals={vitals.remoteVitals} />
-      )}
     </div>
   );
 };

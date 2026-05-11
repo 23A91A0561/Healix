@@ -11,7 +11,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!localStorage.getItem('accessToken')) return;
-    api.get('/auth/me').then(({ data }) => setUser(data.user)).finally(() => setLoading(false));
+    api.get('/auth/me')
+      .then(({ data }) => setUser(data.user))
+      .catch((err) => {
+        console.warn('Authentication check failed:', err.message);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
