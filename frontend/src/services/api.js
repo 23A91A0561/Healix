@@ -7,7 +7,7 @@ const baseURL = shouldUseCurrentHost ? `http://${apiHost}:5000/api` : configured
 const api = axios.create({ baseURL });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -19,5 +19,10 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const translateData = async (data, targetLanguage) => {
+  const response = await api.post('/translation/translate', { data, targetLanguage });
+  return response.data.data;
+};
 
 export default api;

@@ -74,11 +74,11 @@ export const useVitals = (socket, roomId, videoElement) => {
     try {
       if (vitalLensRef.current) return true;
       
-      const { VitalLens } = await import("vitallens");
+      const { VitalLens } = await import("../libs/vitallens-shim.js");
 
       vitalLensRef.current = new VitalLens({
-        method: "vitallens",
-        apiKey: import.meta.env.VITE_VITALLENS_API_KEY || "local",
+        method: "local",
+        apiKey: "local",
       });
       
       vitalLensRef.current.addEventListener("vitals", handleVitals);

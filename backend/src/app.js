@@ -19,7 +19,8 @@ import notificationRoutes from '../routes/notification.routes.js';
 import labRoutes from '../routes/lab.routes.js';
 import orderRoutes from '../routes/order.routes.js';
 import reviewRoutes from '../routes/review.routes.js';
-import aiRoutes from '../routes/ai.routes.js';
+import aiRoutes from '../routes/aiRoutes.js';
+import translationRoutes from '../routes/translationRoutes.js';
 import adminRoutes from '../routes/admin.routes.js';
 import { notFound, errorHandler } from '../middleware/error.middleware.js';
 
@@ -62,6 +63,25 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300 }));
 app.use('/uploads', express.static('uploads'));
 
 app.get('/', (_req, res) => res.json({ status: 'ok', service: 'Smart Digital Healthcare Platform' }));
+app.get('/api/test-groq', async (_req, res) => {
+  try {
+    const { generateAIResponse } = await import('../services/groqService.js');
+    const text = await generateAIResponse(
+      "Say Hello from Groq AI"
+    );
+
+    res.json({
+      success: true,
+      text,
+    });
+  } catch (error) {
+    console.error('Groq test route error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
@@ -74,6 +94,7 @@ app.use('/api/labs', labRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/translation', translationRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use(notFound);
