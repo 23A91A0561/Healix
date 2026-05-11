@@ -14,6 +14,8 @@ const prescriptionSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   medicines: [medicineLineSchema],
+  complaintDescription: String,
+  dosage: String,
   diagnosis: String,
   notes: String,
   pdfUrl: String

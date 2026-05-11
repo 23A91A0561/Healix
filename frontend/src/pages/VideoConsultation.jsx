@@ -3,10 +3,12 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext.jsx";
+import PrescriptionPanel from "../components/PrescriptionPanel.jsx";
 
 import "../styles/pages/Consultation.css";
 
 const iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
+const VITALS_SERVICE_URL = import.meta.env.VITE_RPPG_URL || "http://localhost:5001";
 
 function VideoTile({ stream, muted = false, label, className = "", videoRef }) {
   const internalRef = useRef(null);
@@ -44,11 +46,13 @@ const VideoConsultation = () => {
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const [isPrescriptionOpen, setIsPrescriptionOpen] = useState(false);
   const [measurementPhase, setMeasurementPhase] = useState("pre-consultation");
   const [vitalsState, setVitalsState] = useState({
     status: "Initializing...",
     bpm: 0, rr: 0, sbp: 0, dbp: 0, stress_level: "-", remaining_seconds: 15, measurement_complete: false
   });
+  const [vitalsServiceError, setVitalsServiceError] = useState("");
 
   const [socketInstance, setSocketInstance] = useState(null);
 
@@ -56,11 +60,14 @@ const VideoConsultation = () => {
     if (measurementPhase !== "pre-consultation") return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("http://localhost:5001/vitals_data");
+        const res = await fetch(`${VITALS_SERVICE_URL}/vitals_data`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`rPPG service responded ${res.status}`);
         const data = await res.json();
         setVitalsState(data);
+        setVitalsServiceError("");
       } catch (err) {
         console.error("Failed to fetch vitals", err);
+        setVitalsServiceError("rPPG service is not reachable. Start the app with npm run dev and allow camera access.");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -467,7 +474,7 @@ const VideoConsultation = () => {
 
   const handleContinueToMeeting = async () => {
     try {
-      await fetch("http://localhost:5001/stop_camera");
+      await fetch(`${VITALS_SERVICE_URL}/stop_camera`);
     } catch (e) {
       console.log("Failed to stop camera API", e);
     }
@@ -477,7 +484,7 @@ const VideoConsultation = () => {
 
 
   return (
-    <div className="consultation-page">
+    <div className={`consultation-page ${isPrescriptionOpen ? 'with-prescription' : ''}`}>
       <aside className="consultation-sidebar">
         <div className="consultation-brand">
           <h1>🎥 Healix Meet</h1>
@@ -531,9 +538,9 @@ const VideoConsultation = () => {
 
         {user?.role === 'doctor' && (
           <div style={{ marginTop: 16 }}>
-            <Link to={`/prescription/${appointmentId}`} className="btn btn-primary w-full">
-              Create Prescription
-            </Link>
+            <button onClick={() => setIsPrescriptionOpen(!isPrescriptionOpen)} className="btn btn-primary w-full">
+              {isPrescriptionOpen ? 'Close Prescription' : 'Create Prescription'}
+            </button>
           </div>
         )}
 
@@ -573,10 +580,22 @@ const VideoConsultation = () => {
         {measurementPhase === "pre-consultation" ? (
           <div className="pre-consultation-stage" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', backgroundColor: '#1e1e24', color: 'white', borderRadius: '12px' }}>
             <h2 style={{ marginBottom: '10px', color: '#00E676' }}>Pre-Consultation Vitals Check</h2>
-            <p style={{ marginBottom: '20px', fontSize: '18px', color: '#ccc' }}>{vitalsState.status} {(!vitalsState.measurement_complete && vitalsState.remaining_seconds < 15) ? `(${vitalsState.remaining_seconds}s remaining)` : ""}</p>
+            <p style={{ marginBottom: '20px', fontSize: '18px', color: vitalsServiceError ? '#ff8a80' : '#ccc', textAlign: 'center', maxWidth: '620px' }}>
+              {vitalsServiceError || vitalsState.status} {(!vitalsServiceError && !vitalsState.measurement_complete && vitalsState.remaining_seconds < 15) ? `(${vitalsState.remaining_seconds}s remaining)` : ""}
+            </p>
             
             <div className="video-container" style={{ border: '4px solid transparent', borderRadius: '50%', overflow: 'hidden', boxShadow: 'none', backgroundColor: '#000', marginBottom: '30px', width: '300px', height: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <img src="http://localhost:5001/video_feed" alt="Pre-consultation vitals scanner" crossOrigin="anonymous" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+              {vitalsServiceError ? (
+                <div style={{ color: '#ff8a80', fontSize: '14px', padding: '24px', textAlign: 'center' }}>Camera preview unavailable</div>
+              ) : (
+                <img
+                  src={`${VITALS_SERVICE_URL}/video_feed`}
+                  alt="Pre-consultation vitals scanner"
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                  onError={() => setVitalsServiceError("Camera preview failed. Check that the rPPG service is running on port 5001.")}
+                  onLoad={() => setVitalsServiceError("")}
+                />
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px', textAlign: 'center', width: '80%', maxWidth: '500px' }}>
@@ -625,6 +644,11 @@ const VideoConsultation = () => {
         )}
       </section>
 
+      {isPrescriptionOpen && (
+        <aside className="prescription-sidebar">
+          <PrescriptionPanel appointmentId={appointmentId} onClose={() => setIsPrescriptionOpen(false)} />
+        </aside>
+      )}
     </div>
   );
 };

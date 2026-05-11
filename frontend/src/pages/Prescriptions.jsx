@@ -1,8 +1,27 @@
 import DashboardLayout from '../layouts/DashboardLayout.jsx';
 import DataTable from '../components/DataTable.jsx';
 import { useFetch } from '../hooks/useFetch.js';
+import api from '../services/api.js';
 
 export default function Prescriptions() {
   const { data } = useFetch('/prescriptions');
-  return <DashboardLayout><h1 className="text-3xl font-bold">Prescriptions</h1><div className="mt-6"><DataTable columns={[{ key: 'doctor', label: 'Doctor', render: (r) => r.doctor?.name }, { key: 'diagnosis', label: 'Diagnosis' }, { key: 'createdAt', label: 'Date', render: (r) => new Date(r.createdAt).toLocaleDateString() }, { key: 'download', label: 'PDF', render: (r) => <a className="text-primary" href={`${import.meta.env.VITE_API_URL}/prescriptions/${r._id}/pdf`}>Download</a> }]} rows={data} /></div></DashboardLayout>;
+
+  const handleDownload = async (id) => {
+    try {
+      const response = await api.get(`/prescriptions/${id}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `prescription-${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again later.');
+    }
+  };
+
+  return <DashboardLayout><h1 className="text-3xl font-bold">Prescriptions</h1><div className="mt-6"><DataTable columns={[{ key: 'doctor', label: 'Doctor', render: (r) => r.doctor?.name }, { key: 'diagnosis', label: 'Diagnosis' }, { key: 'createdAt', label: 'Date', render: (r) => new Date(r.createdAt).toLocaleDateString() }, { key: 'download', label: 'PDF', render: (r) => <button className="text-primary font-medium hover:underline" onClick={() => handleDownload(r._id)}>Download</button> }]} rows={data} /></div></DashboardLayout>;
 }

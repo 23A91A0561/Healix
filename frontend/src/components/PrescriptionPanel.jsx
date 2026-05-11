@@ -1,258 +1,102 @@
-import { useEffect, useMemo, useState } from "react";
-import api from "../services/api.js";
-import "./PrescriptionPanel.css";
+import { useState } from "react";
+import API from "../api/axios";
 
-const emptyMedicine = { name: "", dosage: "", frequency: "", duration: "", days: 7 };
-
-const PrescriptionPanel = ({ appointmentId, patientId, onSuccess }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
+const PrescriptionPanel = ({ appointmentId, onClose }) => {
   const [formData, setFormData] = useState({
-    diagnosis: "",
     complaintDescription: "",
+    medicines: "",
+    dosage: "",
     notes: "",
-    medicines: [{ ...emptyMedicine }],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resolvedPatientId = useMemo(() => {
-    if (!patientId) return "";
-    return typeof patientId === "string" ? patientId : patientId?._id || "";
-  }, [patientId]);
-
-  useEffect(() => {
-    console.log("PrescriptionPanel received:", {
-      appointmentId,
-      patientId,
-      resolvedPatientId,
-    });
-  }, [appointmentId, patientId, resolvedPatientId]);
-
-  const isDisabled = !resolvedPatientId || !appointmentId;
-
-  const handleAddMedicine = () => {
-    setFormData((prev) => ({
-      ...prev,
-      medicines: [...prev.medicines, { ...emptyMedicine }],
-    }));
-  };
-
-  const handleRemoveMedicine = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      medicines: prev.medicines.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleMedicineChange = (index, field, value) => {
-    setFormData((prev) => {
-      const medicines = [...prev.medicines];
-      medicines[index] = { ...medicines[index], [field]: value };
-      return { ...prev, medicines };
-    });
-  };
-
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (isDisabled) {
-      setMessage("Loading appointment data, please wait.");
-      return;
-    }
-
-    if (!formData.diagnosis.trim()) {
-      setMessage("Please enter a main complaint.");
-      return;
-    }
-
-    if (formData.medicines.some((med) => !med.name.trim())) {
-      setMessage("Please fill in all medicine names.");
-      return;
-    }
-
-    setIsLoading(true);
-    setMessage("");
-
+  const submitHandler = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
     try {
-      const response = await api.post("/prescriptions", {
-        appointment: appointmentId,
-        patient: resolvedPatientId,
-        diagnosis: formData.diagnosis,
-        complaintDescription: formData.complaintDescription,
-        notes: formData.notes,
-        medicines: formData.medicines.filter((med) => med.name.trim()),
-      });
-
-      setMessage("Prescription created successfully.");
-      setFormData({
-        diagnosis: "",
-        complaintDescription: "",
-        notes: "",
-        medicines: [{ ...emptyMedicine }],
-      });
-
-      setTimeout(() => {
-        setIsExpanded(false);
-        onSuccess?.(response.data);
-      }, 1200);
+      // Healix generally uses "accessToken" or "token"
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      await API.post(
+        "/prescriptions",
+        {
+          appointmentId,
+          ...formData,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      alert("Prescription Created Successfully!");
+      onClose();
     } catch (error) {
-      setMessage(error.response?.data?.message || error.message);
+      console.log(error);
+      alert("Failed to create prescription");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="prescription-panel">
-      <button
-        className="prescription-toggle"
-        onClick={() => !isDisabled && setIsExpanded((current) => !current)}
-        disabled={isDisabled}
-        title={isDisabled ? "Loading appointment data..." : "Add prescription"}
-      >
-        {isExpanded ? "Close Prescription" : isDisabled ? "Loading..." : "Add Prescription"}
-      </button>
-
-      {isExpanded && (
-        <div className="prescription-drawer-shell" role="dialog" aria-label="Create prescription">
-          <div className="prescription-drawer-backdrop" onClick={() => setIsExpanded(false)} />
-
-          <aside className="prescription-form-container">
-            <div className="prescription-drawer-header">
-              <div>
-                <span className="prescription-kicker">Digital Rx</span>
-                <h3>Create Prescription</h3>
-              </div>
-              <button
-                type="button"
-                className="prescription-close"
-                onClick={() => setIsExpanded(false)}
-                aria-label="Close prescription panel"
-              >
-                x
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="diagnosis">Main Complaint *</label>
-                <textarea
-                  id="diagnosis"
-                  name="diagnosis"
-                  value={formData.diagnosis}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Severe headache, high fever"
-                  rows="3"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="complaintDescription">Complaint Description</label>
-                <textarea
-                  id="complaintDescription"
-                  name="complaintDescription"
-                  value={formData.complaintDescription}
-                  onChange={handleInputChange}
-                  placeholder="Symptoms, duration, observations, and relevant history"
-                  rows="4"
-                />
-              </div>
-
-              <div className="form-group">
-                <div className="section-heading">
-                  <label>Medicines</label>
-                  <button type="button" className="btn-add-medicine compact" onClick={handleAddMedicine}>
-                    Add
-                  </button>
-                </div>
-
-                <div className="medicines-list">
-                  {formData.medicines.map((medicine, index) => (
-                    <div key={index} className="medicine-item">
-                      <div className="medicine-item-header">
-                        <span>Medicine {index + 1}</span>
-                        {formData.medicines.length > 1 && (
-                          <button
-                            type="button"
-                            className="btn-remove"
-                            onClick={() => handleRemoveMedicine(index)}
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="medicine-row">
-                        <input
-                          type="text"
-                          placeholder="Medicine name *"
-                          value={medicine.name}
-                          onChange={(event) => handleMedicineChange(index, "name", event.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Dosage, e.g. 500mg"
-                          value={medicine.dosage}
-                          onChange={(event) => handleMedicineChange(index, "dosage", event.target.value)}
-                        />
-                      </div>
-
-                      <div className="medicine-row">
-                        <input
-                          type="text"
-                          placeholder="Frequency, e.g. twice daily"
-                          value={medicine.frequency}
-                          onChange={(event) => handleMedicineChange(index, "frequency", event.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Timing, e.g. after meals"
-                          value={medicine.duration}
-                          onChange={(event) => handleMedicineChange(index, "duration", event.target.value)}
-                        />
-                      </div>
-
-                      <input
-                        type="number"
-                        placeholder="Days"
-                        value={medicine.days}
-                        onChange={(event) => handleMedicineChange(index, "days", parseInt(event.target.value, 10) || 7)}
-                        min="1"
-                        max="90"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="notes">Suggestions / Special Instructions</label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  placeholder="Rest, hydration, follow-up advice, warnings, or tests"
-                  rows="3"
-                />
-              </div>
-
-              {message && <div className="form-message">{message}</div>}
-
-              <button type="submit" className="btn-submit" disabled={isLoading}>
-                {isLoading ? "Creating..." : "Create Prescription"}
-              </button>
-            </form>
-
-            <div className="prescription-resize-hint">Resize from the drawer edge</div>
-          </aside>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Create Prescription</h2>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+      </div>
+      
+      <form onSubmit={submitHandler} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div>
+          <label htmlFor="panel-complaint" style={{ display: "block", marginBottom: 6, fontSize: "0.9rem", color: "#cbd5e1", fontWeight: 600 }}>Complaint Description</label>
+          <textarea
+            id="panel-complaint"
+            placeholder="Describe the patient's complaints"
+            required
+            rows={3}
+            value={formData.complaintDescription}
+            onChange={(e) => setFormData({ ...formData, complaintDescription: e.target.value })}
+            className="prescription-textarea"
+          />
         </div>
-      )}
+        <div>
+          <label htmlFor="panel-medicines" style={{ display: "block", marginBottom: 6, fontSize: "0.9rem", color: "#cbd5e1", fontWeight: 600 }}>Medicines</label>
+          <textarea
+            id="panel-medicines"
+            placeholder="List medicines"
+            required
+            rows={4}
+            value={formData.medicines}
+            onChange={(e) => setFormData({ ...formData, medicines: e.target.value })}
+            className="prescription-textarea"
+          />
+        </div>
+        <div>
+          <label htmlFor="panel-dosage" style={{ display: "block", marginBottom: 6, fontSize: "0.9rem", color: "#cbd5e1", fontWeight: 600 }}>Dosage Instructions</label>
+          <textarea
+            id="panel-dosage"
+            placeholder="Add dosage instructions"
+            required
+            rows={4}
+            value={formData.dosage}
+            onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
+            className="prescription-textarea"
+          />
+        </div>
+        <div>
+          <label htmlFor="panel-notes" style={{ display: "block", marginBottom: 6, fontSize: "0.9rem", color: "#cbd5e1", fontWeight: 600 }}>Doctor Notes</label>
+          <textarea
+            id="panel-notes"
+            placeholder="Write consultation notes"
+            rows={4}
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            className="prescription-textarea"
+          />
+        </div>
+        <button className="btn btn-primary" type="submit" disabled={isSubmitting} style={{ marginTop: 8, padding: '12px', borderRadius: '8px', fontWeight: 'bold' }}>
+          {isSubmitting ? "Saving..." : "Save Prescription"}
+        </button>
+      </form>
     </div>
   );
 };

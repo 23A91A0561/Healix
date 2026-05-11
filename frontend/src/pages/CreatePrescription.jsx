@@ -14,10 +14,9 @@ const CreatePrescription = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
+    complaintDescription: "",
     medicines: "",
-
     dosage: "",
-
     notes: "",
   });
 
@@ -68,6 +67,23 @@ const CreatePrescription = () => {
           </p>
 
           <form onSubmit={submitHandler} style={{ display: "grid", gap: 12 }}>
+            <div>
+              <label htmlFor="prescription-complaint" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Complaint Description
+              </label>
+              <textarea
+                id="prescription-complaint"
+                placeholder="Describe the patient's complaints"
+                style={{ width: "100%", minHeight: 80, borderRadius: 12, border: "1px solid var(--border-light)", padding: 12 }}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    complaintDescription: e.target.value,
+                  })
+                }
+              />
+            </div>
+
             <div>
               <label htmlFor="prescription-medicines" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
                 Medicines

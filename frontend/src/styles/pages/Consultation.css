@@ -4,6 +4,38 @@
   grid-template-columns: 320px 1fr;
   background: #0f172a;
   color: #e2e8f0;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.consultation-page.with-prescription {
+  grid-template-columns: 320px 1fr 340px;
+}
+
+.prescription-sidebar {
+  border-left: 1px solid rgba(226, 232, 240, 0.1);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.92) 100%);
+  padding: 24px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.prescription-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(30, 41, 59, 0.8);
+  color: white;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.prescription-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
 .consultation-sidebar {
