@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import api from '../services/api.js';
 import '../styles/pages/Auth.css';
 
 const doctorLanguages = [
@@ -21,6 +22,14 @@ const doctorLanguages = [
   'Malayalam'
 ];
 
+// Generate all 48 half-hour slots: 00:00-00:30 ... 23:30-00:00
+const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
+  const startMin = i * 30;
+  const endMin = startMin + 30;
+  const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  return `${fmt(startMin)}-${endMin >= 1440 ? '00:00' : fmt(endMin)}`;
+});
+
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -33,11 +42,15 @@ export default function Register() {
     qualification: '',
     experienceYears: '',
     consultationFee: '',
-    languages: []
+    languages: [],
+    timeSlots: []
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const avatarInputRef = useRef(null);
   const isDoctor = form.role === 'doctor';
   const roleOptions = useMemo(() => [
     {
@@ -65,17 +78,44 @@ export default function Register() {
     setError('');
     setSubmitting(true);
     try {
-      const user = await register({
+      const result = await register({
         ...form,
         experienceYears: isDoctor ? Number(form.experienceYears) || 0 : 0,
         consultationFee: isDoctor ? Number(form.consultationFee) || 0 : 0
       });
-      navigate(`/${user.role}`);
+      // Upload avatar if doctor selected a photo
+      if (isDoctor && avatarFile) {
+        try {
+          const formData = new FormData();
+          formData.append('avatar', avatarFile);
+          await api.patch('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        } catch {
+          // Avatar upload failure is non-fatal
+        }
+      }
+      navigate(`/${result.role}`);
     } catch (err) {
       setError(formatError(err));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleAvatarChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  function toggleSlot(slot) {
+    const current = form.timeSlots;
+    const updated = current.includes(slot)
+      ? current.filter((s) => s !== slot)
+      : [...current, slot];
+    setForm({ ...form, timeSlots: updated });
   }
 
   function updateLanguages(event) {
@@ -229,6 +269,112 @@ export default function Register() {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '8px 0 0' }}>
                   Hold Ctrl on Windows or Cmd on Mac to select multiple languages.
                 </p>
+              </div>
+
+              <div className="field">
+                <label>
+                  Available Time Slots
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
+                    ({form.timeSlots.length} selected)
+                  </span>
+                </label>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '0 0 10px' }}>
+                  Click to select the 30-minute slots you are available for consultations.
+                </p>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: 6,
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                  padding: '4px 2px'
+                }}>
+                  {ALL_SLOTS.map((slot) => {
+                    const active = form.timeSlots.includes(slot);
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => toggleSlot(slot)}
+                        style={{
+                          padding: '6px 4px',
+                          borderRadius: 8,
+                          border: active ? '2px solid #2563eb' : '1.5px solid var(--border, #e2e8f0)',
+                          background: active ? 'linear-gradient(135deg,#2563eb,#06b6d4)' : 'var(--bg-surface, #f8fafc)',
+                          color: active ? '#fff' : 'var(--text-main, #1e293b)',
+                          fontSize: '0.72rem',
+                          fontWeight: active ? 700 : 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          letterSpacing: '0.01em'
+                        }}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Profile Photo (optional)</label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    padding: '12px 16px',
+                    border: '1.5px dashed var(--border)',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    background: 'var(--bg-surface, #f8fafc)'
+                  }}
+                  onClick={() => avatarInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && avatarInputRef.current?.click()}
+                >
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Preview"
+                      style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg,#2563eb,#06b6d4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: 22,
+                        fontWeight: 700,
+                        flexShrink: 0
+                      }}
+                    >
+                      {form.name?.charAt(0)?.toUpperCase() || 'D'}
+                    </div>
+                  )}
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600 }}>
+                      {avatarFile ? avatarFile.name : 'Click to upload a profile photo'}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      JPG, PNG or WEBP · max 8 MB
+                    </p>
+                  </div>
+                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleAvatarChange}
+                />
               </div>
             </>
           ) : null}

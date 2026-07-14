@@ -12,7 +12,7 @@ const PatientProfile = () => {
   useEffect(() => {
     const loadPatientProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("accessToken");
         const { data } = await API.get("/auth/profile", {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -28,11 +28,14 @@ const BookAppointment = () => {
   const confirmBooking = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
+
+      // Combine the date + time fields into a proper ISO 8601 datetime string
+      const scheduledAt = new Date(`${formData.date}T${formData.time}:00`).toISOString();
 
       await API.post(
         "/appointments",
-        { doctor: doctorId, ...formData },
+        { doctor: doctorId, scheduledAt },
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
@@ -41,7 +44,7 @@ const BookAppointment = () => {
     } catch (error) {
       console.log(error);
       setShowConfirm(false);
-      alert("Booking failed. Please try again.");
+      alert(error.response?.data?.message || "Booking failed. Please try again.");
     } finally {
       setLoading(false);
     }

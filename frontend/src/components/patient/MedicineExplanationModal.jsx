@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FaExclamationTriangle, FaPills, FaShieldAlt, FaTimes } from 'react-icons/fa';
+import { FaPills, FaTimes } from 'react-icons/fa';
 import { fetchMedicineExplanation } from '../../services/aiExplanation.js';
 import { translateData } from '../../services/api.js';
 import LanguageSelector from './LanguageSelector.jsx';
@@ -84,14 +84,14 @@ export default function MedicineExplanationModal({ prescription, onClose }) {
 
   const speechText = useMemo(() => {
     const labels = {
-      en: { usage: 'Usage', precautions: 'Precautions', sideEffects: 'Side effects', safeUse: 'Safe use' },
-      hi: { usage: 'उपयोग', precautions: 'सावधानियां', sideEffects: 'दुष्प्रभाव', safeUse: 'सुरक्षित उपयोग' },
-      te: { usage: 'ఉపయోగం', precautions: 'జాగ్రత్తలు', sideEffects: 'దుష్ప్రభావాలు', safeUse: 'సురక్షితమైన వాడకం' }
+      en: { purpose: 'Purpose', dosage: 'Dosage', precautions: 'Precautions' },
+      hi: { purpose: 'उद्देश्य', dosage: 'खुराक', precautions: 'सावधानियां' },
+      te: { purpose: 'ఉద్దేశ్యం', dosage: 'మోతాదు', precautions: 'జాగ్రత్తలు' }
     };
     const l = labels[language] || labels.en;
 
     return items.map((item) => 
-      `${item.medicine || item.name || ''}. ${l.usage}: ${item.usage || ''}. ${l.precautions}: ${item.precautions || ''}. ${l.sideEffects}: ${item.sideEffects || ''}. ${l.safeUse}: ${item.safeUse || ''}.`
+      `${item.medicine || item.name || ''}. ${l.purpose}: ${item.purpose || ''}. ${l.dosage}: ${item.dosage || ''}. ${l.precautions}: ${item.precautions || ''}.`
     ).join(' ');
   }, [items, language]);
 
@@ -134,10 +134,9 @@ export default function MedicineExplanationModal({ prescription, onClose }) {
                     {String(item?.medicine || item?.name || `Medicine ${index + 1}`)}
                   </h3>
                   <div className="mt-4 space-y-3 text-sm text-slate-700">
-                    <p><span className="font-bold text-slate-900">Usage:</span> {String(item?.usage || item?.description || 'Use as prescribed by your doctor.')}</p>
-                    <p><span className="font-bold text-slate-900">Precautions:</span> {String(item?.precautions || 'Follow doctor advice and avoid missed doses.')}</p>
-                    <p className="flex gap-2"><FaExclamationTriangle className="mt-1 shrink-0 text-amber-500" /><span><strong>Side effects:</strong> {String(item?.sideEffects || item?.side_effects || 'Ask your doctor if you notice unusual symptoms.')}</span></p>
-                    <p className="flex gap-2"><FaShieldAlt className="mt-1 shrink-0 text-emerald-500" /><span><strong>Safe use:</strong> {String(item?.safeUse || item?.safety || item?.howToUse || item?.how_to_use || 'Take with water and follow dosage timing.')}</span></p>
+                    <p><span className="font-bold text-slate-900">Purpose:</span> {String(item?.purpose || 'As prescribed by your doctor.')}</p>
+                    <p><span className="font-bold text-slate-900">Dosage:</span> {String(item?.dosage || 'Follow doctor instructions.')}</p>
+                    <p><span className="font-bold text-slate-900">Precautions:</span> {String(item?.precautions || 'Consult your doctor for specific guidance.')}</p>
                   </div>
                 </article>
               ))}

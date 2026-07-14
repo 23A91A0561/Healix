@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { FaCalendarCheck, FaChartLine, FaComments, FaFileMedical, FaPills, FaUserMd, FaVideo } from 'react-icons/fa';
 
 const links = {
-  patient: [['Dashboard', '/patient', FaChartLine], ['Doctors', '/doctors', FaUserMd], ['Appointments', '/appointments', FaCalendarCheck], ['Prescriptions', '/prescriptions', FaFileMedical], ['Medicines', '/orders', FaPills], ['Assistant', '/assistant', FaComments]],
+  patient: [['Dashboard', '/patient', FaChartLine], ['Doctors', '/doctors', FaUserMd], ['Appointments', '/appointments', FaCalendarCheck], ['Prescriptions', '/prescriptions', FaFileMedical], ['Medicines', '/orders', FaPills], ['Cure AI', '/assistant', FaComments]],
   doctor: [['Dashboard', '/doctor', FaChartLine], ['Appointments', '/appointments', FaCalendarCheck], ['Consultation', '/consultation/demo', FaVideo], ['Prescriptions', '/prescriptions', FaFileMedical]],
   admin: [['Dashboard', '/admin', FaChartLine], ['Doctors', '/doctors', FaUserMd], ['Appointments', '/appointments', FaCalendarCheck]]
 };

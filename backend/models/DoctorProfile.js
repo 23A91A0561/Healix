@@ -19,6 +19,8 @@ const doctorProfileSchema = new mongoose.Schema({
   languages: { type: [String], default: [] },
   experienceYears: { type: Number, default: 0, index: true },
   consultationFee: { type: Number, default: 0 },
+  profileImage: String,
+  timeSlots: { type: [String], default: [] },
   bio: String,
   documents: [String],
   availableSlots: [slotSchema],

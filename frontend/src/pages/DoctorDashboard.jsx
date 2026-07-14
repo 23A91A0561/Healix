@@ -30,11 +30,11 @@ const DoctorDashboard = () => {
 
   const approveAppointment = async (id) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
 
-      await API.put(
-        `/appointments/approve/${id}`,
-        {},
+      await API.patch(
+        `/appointments/${id}/status`,
+        { status: 'confirmed' },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -42,7 +42,7 @@ const DoctorDashboard = () => {
         },
       );
 
-      const { data } = await API.get("/appointments/doctor", {
+      const { data } = await API.get("/appointments", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -52,16 +52,16 @@ const DoctorDashboard = () => {
       toast.success("Appointment approved successfully.", "Updated");
     } catch (error) {
       console.log(error);
-      toast.error("Unable to approve appointment right now.");
+      toast.error(error.response?.data?.message || "Unable to approve appointment right now.");
     }
   };
 
   useEffect(() => {
     const loadAppointments = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("accessToken");
 
-        const { data } = await API.get("/appointments/doctor", {
+        const { data } = await API.get("/appointments", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

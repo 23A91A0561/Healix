@@ -7,6 +7,20 @@ import { useFetch } from '../hooks/useFetch.js';
 import '../styles/pages/Dashboard.css';
 import '../styles/pages/Booking.css';
 
+const API_ROOT = (() => {
+  const apiHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const configured = import.meta.env.VITE_API_URL;
+  const shouldUseCurrentHost = import.meta.env.DEV && apiHost !== 'localhost' && apiHost !== '127.0.0.1';
+  const base = shouldUseCurrentHost ? `http://${apiHost}:5000` : (configured ? configured.replace('/api', '') : `http://${apiHost}:5000`);
+  return base;
+})();
+
+function getAvatarUrl(avatar) {
+  if (!avatar) return null;
+  if (avatar.startsWith('http')) return avatar;
+  return `${API_ROOT}${avatar}`;
+}
+
 function formatDateInput(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -269,7 +283,29 @@ export default function Doctors() {
                 <article className="profile-card" key={doctor._id} style={{ overflow: 'visible' }}>
                   <div className="profile-body">
                     <div className="navbar-brand" style={{ alignItems: 'center' }}>
-                      <span className="navbar-logo">{doctor.user?.name?.charAt(0) || 'D'}</span>
+                      {(() => {
+                        const avatarUrl = getAvatarUrl(doctor.profileImage);
+                        return avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt={doctor.user?.name || 'Doctor'}
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: '50%',
+                              objectFit: 'cover',
+                              flexShrink: 0,
+                              border: '2px solid var(--primary-blue, #2563eb)'
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextSibling && (e.currentTarget.nextSibling.style.display = 'flex');
+                            }}
+                          />
+                        ) : (
+                          <span className="navbar-logo">{doctor.user?.name?.charAt(0) || 'D'}</span>
+                        );
+                      })()}
                       <span>
                         <strong>{doctor.user?.name}</strong>
                         <small style={{ color: 'var(--text-muted)', display: 'block', fontWeight: 600 }}>
@@ -284,6 +320,8 @@ export default function Doctors() {
                       <div className="info-item"><strong>{formatPrice(doctor.consultationFee)}</strong><span>Consultation price</span></div>
                       <div className="info-item"><strong>{doctor.rating?.average || 0}</strong><span>Rating</span></div>
                     </div>
+
+
 
                     <button
                       type="button"
@@ -319,30 +357,29 @@ export default function Doctors() {
                         <div style={{ marginTop: 16 }}>
                           <p style={{ fontWeight: 700, margin: 0 }}>Available 30-minute slots</p>
                           {bookingError ? <p style={{ color: 'var(--danger)' }}>{bookingError}</p> : null}
+
                           {loadingAvailability ? (
-                            <p style={{ color: 'var(--text-muted)' }}>Checking availability...</p>
-                          ) : schedule.length ? (
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                              Doctor schedule: {schedule.map((slot) => `${slot.day} ${slot.start}-${slot.end}`).join(', ')}
-                            </p>
-                          ) : null}
-
-                          <div className="slot-grid">
-                            {availability.map((slot) => (
-                              <button
-                                key={`${slot.start}-${slot.end}`}
-                                type="button"
-                                onClick={() => setSelectedSlot(slot)}
-                                className={`slot-btn ${selectedSlot?.start === slot.start ? 'active' : ''}`}
-                              >
-                                {slot.start} - {slot.end}
-                              </button>
-                            ))}
-                          </div>
-
-                          {!loadingAvailability && selectedDate && !availability.length && !bookingError ? (
-                            <p style={{ color: 'var(--text-muted)' }}>No free slots found for the selected day.</p>
-                          ) : null}
+                            <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>Checking availability...</p>
+                          ) : (
+                            <div className="slot-grid" style={{ marginTop: 10 }}>
+                              {availability.length > 0 ? (
+                                availability.map((slot) => (
+                                  <button
+                                    key={`${slot.start}-${slot.end}`}
+                                    type="button"
+                                    onClick={() => setSelectedSlot(slot)}
+                                    className={`slot-btn ${selectedSlot?.start === slot.start ? 'active' : ''}`}
+                                  >
+                                    {slot.start} – {slot.end}
+                                  </button>
+                                ))
+                              ) : (
+                                <p style={{ color: 'var(--text-muted)', gridColumn: '1/-1' }}>
+                                  {selectedDate ? 'No free slots for this date.' : 'Select a date to see available slots.'}
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                           <button
                             type="button"

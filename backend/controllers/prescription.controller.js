@@ -2,6 +2,7 @@ import Prescription from '../models/Prescription.js';
 import MedicineReminder from '../models/MedicineReminder.js';
 import Appointment from '../models/Appointment.js';
 import { createPrescriptionPdf } from '../utils/pdf.js';
+import { notify } from '../services/notification.service.js';
 
 export async function listPrescriptions(req, res) {
   const filter = req.user.role === 'doctor' ? { doctor: req.user._id } : req.user.role === 'patient' ? { patient: req.user._id } : {};
@@ -11,10 +12,14 @@ export async function listPrescriptions(req, res) {
 export async function createPrescription(req, res) {
   try {
     const { appointmentId, complaintDescription, medicines, dosage, notes } = req.body;
-    
-    const appointment = await Appointment.findById(appointmentId);
+
+    if (!appointmentId) {
+      return res.status(400).json({ message: 'appointmentId is required' });
+    }
+
+    const appointment = await Appointment.findById(appointmentId).catch(() => null);
     if (!appointment) {
-      return res.status(404).json({ message: "Appointment not found" });
+      return res.status(404).json({ message: `Appointment not found (id: ${appointmentId})` });
     }
 
     let medicinesArray = [];
@@ -36,22 +41,37 @@ export async function createPrescription(req, res) {
       notes
     });
 
-    const reminders = prescription.medicines.map((med) => ({
-      patient: prescription.patient,
-      prescription: prescription._id,
-      medicineName: med.name,
-      schedule: ['09:00'],
-      startDate: new Date(),
-      endDate: new Date(Date.now() + (med.days || 7) * 86400000)
-    }));
-    
-    if (reminders.length > 0) {
-      await MedicineReminder.insertMany(reminders);
+    // Create medicine reminders — non-fatal if it fails
+    try {
+      const reminders = prescription.medicines.map((med) => ({
+        patient: prescription.patient,
+        prescription: prescription._id,
+        medicineName: med.name,
+        schedule: ['09:00'],
+        startDate: new Date(),
+        endDate: new Date(Date.now() + (med.days || 7) * 86400000)
+      }));
+      if (reminders.length > 0) {
+        await MedicineReminder.insertMany(reminders);
+      }
+    } catch (reminderErr) {
+      console.warn('Medicine reminders creation failed (non-fatal):', reminderErr.message);
     }
-    
+
+    // Notify the patient — non-fatal if it fails
+    try {
+      await notify(req.app.get('io'), prescription.patient, {
+        title: 'New Prescription',
+        type: 'prescription',
+        message: `Dr. ${req.user.name} has created a prescription for your appointment.`
+      });
+    } catch (notifyErr) {
+      console.warn('Prescription notification failed (non-fatal):', notifyErr.message);
+    }
+
     res.status(201).json(prescription);
   } catch (error) {
-    console.error("Prescription creation error:", error);
+    console.error('Prescription creation error:', error);
     res.status(500).json({ message: error.message });
   }
 }

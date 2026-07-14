@@ -11,12 +11,15 @@ const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const authPayload = (user) => ({ user, accessToken: signAccessToken(user), refreshToken: signRefreshToken(user) });
 
 export async function register(req, res) {
-  const { name, email, password, role = 'patient', specialization, qualification, languages } = req.body;
-  const user = await User.create({ name, email, password, role, isApproved: role !== 'doctor' });
+  const { name, email, password, role = 'patient', specialization, qualification, languages, experienceYears, consultationFee, timeSlots } = req.body;
+  const user = await User.create({ name, email, password, role, isApproved: true });
   if (role === 'doctor') await DoctorProfile.create({
     user: user._id,
     specialization: specialization || 'General Physician',
     qualification,
+    experienceYears: Number(experienceYears) || 0,
+    consultationFee: Number(consultationFee) || 0,
+    timeSlots: Array.isArray(timeSlots) ? timeSlots : [],
     languages: Array.isArray(languages) ? languages : typeof languages === 'string' && languages ? [languages] : []
   });
   if (role === 'patient') await PatientProfile.create({ user: user._id });
@@ -77,4 +80,24 @@ export async function verifyEmail(req, res) {
   user.verificationTokenHash = undefined;
   await user.save();
   res.json({ message: 'Email verified' });
+}
+
+export async function uploadAvatar(req, res) {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  const imageUrl = `/uploads/${req.file.filename}`;
+
+  // For doctors — store image on DoctorProfile, not User
+  if (req.user.role === 'doctor') {
+    const profile = await DoctorProfile.findOneAndUpdate(
+      { user: req.user._id },
+      { profileImage: imageUrl },
+      { new: true }
+    );
+    if (!profile) return res.status(404).json({ message: 'Doctor profile not found' });
+    return res.json({ profileImage: profile.profileImage, profile });
+  }
+
+  // For other roles — store on User.avatar
+  const user = await User.findByIdAndUpdate(req.user._id, { avatar: imageUrl }, { new: true });
+  res.json({ avatar: user.avatar, user });
 }

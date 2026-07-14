@@ -24,7 +24,7 @@ const CreatePrescription = () => {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
 
       await API.post(
         "/prescriptions",
@@ -46,7 +46,8 @@ const CreatePrescription = () => {
 
       navigate("/doctor");
     } catch (error) {
-      console.log(error);
+      console.error('Prescription error:', error.response?.data || error.message);
+      alert(error.response?.data?.message || error.message || "Failed to create prescription. Please try again.");
     }
   };
 

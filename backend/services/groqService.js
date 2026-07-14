@@ -3,14 +3,15 @@ import Groq from 'groq-sdk';
 const apiKey = process.env.GROQ_API_KEY;
 
 if (!apiKey) {
-  throw new Error("Missing GROQ_API_KEY");
+  console.warn("⚠️  GROQ_API_KEY is not set — AI features will return mock responses.");
 }
 
-const groq = new Groq({ apiKey });
+const groq = apiKey ? new Groq({ apiKey }) : null;
 
 const PRIMARY_MODEL = "llama-3.1-8b-instant";
 
 async function generateWithModel(prompt, modelName) {
+  if (!groq) throw new Error("GROQ_API_KEY is not configured");
   console.log("Sending Groq Request...");
   console.log("Groq Model:", modelName);
   
@@ -38,30 +39,29 @@ export const generateAIResponse = async (prompt) => {
     
     console.log("Returning Mock Response due to API limits or errors...");
     
-    if (prompt.includes("Array of JSON objects") || prompt.includes("medicine details")) {
+    if (prompt.includes("medicine") || prompt.includes("purpose")) {
       return JSON.stringify([
         {
-          medicine: "Mock Medicine (Quota Exceeded)",
-          usage: "Take 1 pill twice a day",
-          precautions: "Take after meals",
-          sideEffects: "None known in mock data",
-          safeUse: "This is mock data. Please consult your real doctor."
+          medicine: "Mock Medicine (API unavailable)",
+          purpose: "Used to treat the prescribed condition",
+          dosage: "Take 1 tablet twice daily after meals",
+          precautions: "This is mock data — please consult your doctor"
         }
       ]);
-    } else if (prompt.includes("diet plan") || prompt.includes("Single JSON object")) {
+    } else if (prompt.includes("diet") || prompt.includes("foodsToEat")) {
       return JSON.stringify({
-        foodsToEat: ["Fruits", "Green leafy vegetables", "Whole grains"],
+        foodsToEat: ["Fresh fruits", "Green leafy vegetables", "Whole grains"],
         foodsToAvoid: ["Oily food", "Excessive sugar", "Processed snacks"],
-        hydration: ["Drink at least 2 liters of water daily"],
-        healthyHabits: ["Sleep for 8 hours", "Avoid stress"]
+        hydration: ["Drink at least 2 litres of water daily"],
+        healthyHabits: ["Sleep 7-8 hours", "Light exercise daily", "Avoid stress"]
       });
     } else {
       return JSON.stringify({
-        summary: "This is a mock prescription analysis because the Groq API quota was exceeded.",
-        diagnosis: "Mock Diagnosis",
-        medicines: ["Mock Medicine"],
-        warnings: ["Mock Warning: Please verify with a real doctor."],
-        followUp: ["Follow up in 7 days"]
+        summary: "Mock prescription analysis — Groq API was unavailable.",
+        diagnosis: "See your prescription for details",
+        medicines: ["Refer to prescription"],
+        warnings: [],
+        followUp: ["Follow up with your doctor in 7 days"]
       });
     }
   }

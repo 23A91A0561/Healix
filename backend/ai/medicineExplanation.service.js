@@ -129,11 +129,10 @@ function normalizeAiItems(items) {
 
   return items.map((item) => ({
     medicine: toString(item?.medicine || item?.name),
-    usage: toString(item?.usage),
-    precautions: toString(item?.precautions),
-    sideEffects: toString(item?.sideEffects || item?.side_effects),
-    safeUse: toString(item?.safeUse || item?.safe_use || item?.safety || item?.howToUse)
-  })).filter((item) => item.medicine && item.usage);
+    purpose: toString(item?.purpose || item?.usage || item?.description),
+    dosage: toString(item?.dosage || item?.dosageInstructions),
+    precautions: toString(item?.precautions || item?.keyPrecautions)
+  })).filter((item) => item.medicine);
 }
 
 function normalizeDietPlan(plan) {
@@ -186,16 +185,14 @@ function prescriptionContext(prescription) {
   };
 }
 
-const SYSTEM_PROMPT = `Act as a medical data analyst for the Healix Medical Center platform. Your task is to process doctor-prescribed JSON data and return strictly formatted, medically accurate supplementary information.
+const SYSTEM_PROMPT = `You are a professional medical information assistant for the Healix healthcare platform. You provide clear, accurate, and concise medical guidance based on doctor-prescribed data.
 
 STRICT RULES:
-1. ALWAYS return ONLY a valid JSON object or array. No markdown blocks (no \`\`\`json), no preamble, and no closing remarks.
-2. If the request is for "Give Details", output an ARRAY of objects:
-   [{"medicine": "", "usage": "", "precautions": "", "sideEffects": "", "safeUse": ""}]
-3. If the request is for "Diet Plan", output an OBJECT:
-   {"foodsToEat": [], "foodsToAvoid": [], "hydration": [], "healthyHabits": []}
-JSON PARSING FAILSAFE:
-If you are unable to generate a specific field, provide a general medical best practice for that field rather than leaving it empty.`;
+1. Return ONLY valid JSON — no markdown fences, no preamble, no extra text.
+2. Be concise and professional. Every sentence should be useful.
+3. Use simple language a patient can understand.
+4. Do not add alarming warnings or unnecessary disclaimers.
+5. Do not invent information — base everything on the prescription data provided.`;
 
 const languagePrompts = {
   en: "in English",
@@ -215,12 +212,17 @@ export async function generateMedicineExplanation({ prescription, lang = 'en' })
 
   const prompt = `${SYSTEM_PROMPT}
 
-Analyze this prescription and generate medicine details ${languageInstruction}. Provide medicine usage, precautions, side effects, and safe usage instructions for every medicine listed.
+For each medicine in this prescription, provide:
+- medicine: Name of the medicine
+- purpose: What this medicine is used for (1 sentence)
+- dosage: How and when to take it (clear instructions)
+- precautions: One key precaution to be aware of
 
-IMPORTANT: Return the JSON object with keys in English but all values MUST be in the requested language (${lang}). Values must be simple strings, not nested objects or arrays.
+Return ${languageInstruction}. Keys must stay in English, values in the requested language (${lang}).
 
-Prescription: ${JSON.stringify(context)}
-Return format: Array of JSON objects.`;
+Prescription data: ${JSON.stringify(context)}
+
+Return format: [{"medicine": "", "purpose": "", "dosage": "", "precautions": ""}]`;
 
   console.log('Groq prompt sent:', prompt);
   const content = await generateAIResponse(prompt);
@@ -241,12 +243,17 @@ export async function generateDietPlan({ prescription, lang = 'en' }) {
 
   const prompt = `${SYSTEM_PROMPT}
 
-Analyze the disease and suggestions in this prescription and generate a diet plan ${languageInstruction}. Include foods to eat, foods to avoid, hydration requirements, and healthy habits.
+Based on the diagnosis and medicines in this prescription, create a practical diet plan with:
+- foodsToEat: 5-6 specific foods that help recovery (e.g. "Banana — rich in potassium, helps restore energy")
+- foodsToAvoid: 4-5 specific foods that could worsen the condition
+- hydration: A single clear hydration recommendation
+- healthyHabits: 3-4 actionable daily habits for recovery
 
-IMPORTANT: Return the JSON object with keys in English (foodsToEat, foodsToAvoid, hydration, healthyHabits) but all values MUST be in the requested language (${lang}).
+Be specific — name actual foods, not generic categories. Return ${languageInstruction}. Keys must stay in English, values in the requested language (${lang}).
 
-Prescription: ${JSON.stringify(context)}
-Return format: Single JSON object.`;
+Prescription data: ${JSON.stringify(context)}
+
+Return format: {"foodsToEat": [], "foodsToAvoid": [], "hydration": [], "healthyHabits": []}`;
 
   console.log('Groq prompt sent:', prompt);
   const content = await generateAIResponse(prompt);

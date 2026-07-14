@@ -15,8 +15,8 @@ const MyPrescriptions = () => {
   useEffect(() => {
     const loadPrescriptions = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const { data } = await API.get("/prescriptions/patient", {
+        const token = localStorage.getItem("accessToken");
+        const { data } = await API.get("/prescriptions", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

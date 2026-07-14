@@ -11,9 +11,14 @@ export async function listAppointments(req, res) {
 }
 
 export async function bookAppointment(req, res) {
-  const result = await createAppointment({ patient: req.user._id, doctor: req.body.doctor, scheduledAt: req.body.scheduledAt, amount: Number(req.body.amount || 0) });
-  await notify(req.app.get('io'), req.body.doctor, { title: 'New appointment request', type: 'appointment', message: 'A patient selected a consultation slot. Confirmation is pending payment.' });
-  res.status(201).json(result);
+  try {
+    const result = await createAppointment({ patient: req.user._id, doctor: req.body.doctor, scheduledAt: req.body.scheduledAt, amount: Number(req.body.amount || 0) });
+    await notify(req.app.get('io'), req.body.doctor, { title: 'New appointment request', type: 'appointment', message: 'A patient selected a consultation slot. Confirmation is pending payment.' });
+    res.status(201).json(result);
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
+  }
 }
 
 export async function updateAppointmentStatus(req, res) {

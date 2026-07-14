@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
   phone: String,
   avatar: String,
   isEmailVerified: { type: Boolean, default: false },
-  isApproved: { type: Boolean, default: function defaultApproval() { return this.role !== 'doctor'; } },
+  isApproved: { type: Boolean, default: true },
   isBlocked: { type: Boolean, default: false },
   refreshTokenHash: String,
   resetTokenHash: String,

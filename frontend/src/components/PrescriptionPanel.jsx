@@ -31,8 +31,8 @@ const PrescriptionPanel = ({ appointmentId, onClose }) => {
       alert("Prescription Created Successfully!");
       onClose();
     } catch (error) {
-      console.log(error);
-      alert("Failed to create prescription");
+      console.error('Prescription error:', error.response?.data || error.message);
+      alert(error.response?.data?.message || error.message || "Failed to create prescription");
     } finally {
       setIsSubmitting(false);
     }

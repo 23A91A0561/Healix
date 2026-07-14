@@ -22,6 +22,7 @@ import reviewRoutes from '../routes/review.routes.js';
 import aiRoutes from '../routes/aiRoutes.js';
 import translationRoutes from '../routes/translationRoutes.js';
 import adminRoutes from '../routes/admin.routes.js';
+import chatbotRoutes from '../routes/chatbot.routes.js';
 import { notFound, errorHandler } from '../middleware/error.middleware.js';
 
 const app = express();
@@ -96,6 +97,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/translation', translationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

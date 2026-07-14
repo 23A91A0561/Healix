@@ -91,7 +91,6 @@ export async function getAvailability(req, res) {
   if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
 
   const weekday = getWeekdayName(selectedDate);
-  const schedule = (doctor.availableSlots || []).filter((slot) => slot.day === weekday && slot.isActive !== false);
   const dayStart = new Date(selectedDate);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(selectedDate);
@@ -112,22 +111,45 @@ export async function getAvailability(req, res) {
     };
   });
 
-  const availability = schedule.flatMap((slot) => {
-    const slotStart = toMinutes(slot.start);
-    const slotEnd = toMinutes(slot.end);
-    return buildHalfHourSlots(slotStart, slotEnd)
+  // ── Use registration timeSlots if no day-based schedule is set ──────────────
+  const daySchedule = (doctor.availableSlots || []).filter((slot) => slot.day === weekday && slot.isActive !== false);
+
+  let availability;
+  if (daySchedule.length > 0) {
+    // Classic day-based schedule
+    availability = daySchedule.flatMap((slot) => {
+      const slotStart = toMinutes(slot.start);
+      const slotEnd = toMinutes(slot.end);
+      return buildHalfHourSlots(slotStart, slotEnd)
+        .filter((candidate) => {
+          const candidateStart = toMinutes(candidate.start);
+          const candidateEnd = toMinutes(candidate.end);
+          return !bookedSlots.some((booked) => candidateStart < booked.end && candidateEnd > booked.start);
+        })
+        .map((candidate) => ({ ...candidate, day: weekday, date: formatDateOnly(selectedDate) }));
+    });
+  } else if (doctor.timeSlots && doctor.timeSlots.length > 0) {
+    // Registration-based timeSlots — apply per-day availability filtering
+    availability = doctor.timeSlots
+      .map((str) => {
+        const dashIdx = str.indexOf('-', 3);
+        return { start: str.slice(0, dashIdx), end: str.slice(dashIdx + 1) };
+      })
       .filter((candidate) => {
         const candidateStart = toMinutes(candidate.start);
         const candidateEnd = toMinutes(candidate.end);
         return !bookedSlots.some((booked) => candidateStart < booked.end && candidateEnd > booked.start);
       })
       .map((candidate) => ({ ...candidate, day: weekday, date: formatDateOnly(selectedDate) }));
-  });
+  } else {
+    availability = [];
+  }
 
   res.json({
     date: formatDateOnly(selectedDate),
     day: weekday,
-    schedule,
+    schedule: daySchedule,
     availability
   });
 }
+

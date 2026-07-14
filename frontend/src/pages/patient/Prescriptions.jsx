@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { FaFileMedical, FaSearch } from 'react-icons/fa';
+import { FaFileMedical, FaSearch, FaSpinner } from 'react-icons/fa';
 import PrescriptionPreviewCard from '../../components/patient/PrescriptionPreviewCard.jsx';
 import PrescriptionViewerModal from '../../components/patient/PrescriptionViewerModal.jsx';
 import MedicineExplanationModal from '../../components/patient/MedicineExplanationModal.jsx';
 import DietPlanModal from '../../components/patient/DietPlanModal.jsx';
 import DashboardLayout from '../../layouts/DashboardLayout.jsx';
-import prescriptions from '../../static/prescriptions.js';
+import { useFetch } from '../../hooks/useFetch.js';
 
 function prescriptionMatchesSearch(prescription, search) {
   const query = search.trim().toLowerCase();
@@ -26,6 +26,7 @@ function prescriptionMatchesSearch(prescription, search) {
 }
 
 export default function PatientPrescriptions() {
+  const { data: prescriptions = [], loading } = useFetch('/prescriptions');
   const [search, setSearch] = useState('');
   const [viewerPrescription, setViewerPrescription] = useState(null);
   const [explanationPrescription, setExplanationPrescription] = useState(null);
@@ -53,7 +54,7 @@ export default function PatientPrescriptions() {
           </div>
 
           <div className="rounded-2xl bg-white/15 p-4 text-center backdrop-blur">
-            <p className="text-3xl font-bold">{prescriptions.length}</p>
+            <p className="text-3xl font-bold">{loading ? '…' : prescriptions.length}</p>
             <p className="text-sm font-semibold text-sky-50">prescriptions</p>
           </div>
         </div>
@@ -73,7 +74,11 @@ export default function PatientPrescriptions() {
         </label>
       </div>
 
-      {filteredPrescriptions.length > 0 ? (
+      {loading ? (
+        <div className="mt-16 flex justify-center">
+          <FaSpinner className="animate-spin text-4xl text-sky-500" />
+        </div>
+      ) : filteredPrescriptions.length > 0 ? (
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredPrescriptions.map((prescription) => (
             <PrescriptionPreviewCard
@@ -92,7 +97,7 @@ export default function PatientPrescriptions() {
           </div>
           <h2 className="mt-5 text-2xl font-bold text-slate-900">No prescriptions found</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-            Your uploaded prescription previews will appear here with doctor details, medicine counts, AI explanations, and diet plans.
+            Your prescription records will appear here once your doctor creates one after a consultation.
           </p>
         </div>
       )}

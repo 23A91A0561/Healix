@@ -40,9 +40,9 @@ const PatientDashboard = () => {
   useEffect(() => {
     const loadAppointments = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("accessToken");
 
-        const { data } = await API.get("/appointments/patient", {
+        const { data } = await API.get("/appointments", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

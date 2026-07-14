@@ -8,6 +8,6 @@ router.post('/', authorize('patient'), bookAppointment);
 router.post('/:id/payment/verify', authorize('patient'), verifyAppointmentPayment);
 router.patch('/:id/status', authorize('doctor', 'admin'), updateAppointmentStatus);
 router.post('/:id/health-form', authorize('patient'), saveHealthForm);
-router.put('/:id/start', startConsultation);
-router.put('/:id/end', endConsultation);
+router.put('/:id/start', protect, startConsultation);
+router.put('/:id/end', protect, endConsultation);
 export default router;
