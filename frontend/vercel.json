@@ -1,7 +1,9 @@
 {
-  "env": {
-    "VITE_API_URL": "https://healix-n9am.onrender.com/api",
-    "VITE_SOCKET_URL": "https://healix-n9am.onrender.com"
+  "build": {
+    "env": {
+      "VITE_API_URL": "https://healix-n9am.onrender.com/api",
+      "VITE_SOCKET_URL": "https://healix-n9am.onrender.com"
+    }
   },
   "rewrites": [
     {
