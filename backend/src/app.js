@@ -33,8 +33,8 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  if (allowedOrigins.includes(origin)) return true;
+  if (!origin) return true; // non-browser requests (curl, Postman, server-to-server)
+  if (allowedOrigins.some(o => o && origin.startsWith(o.replace(/\/$/, '')))) return true;
   // In development, allow any origin (covers LAN IPs like 10.x.x.x, 192.168.x.x)
   if (process.env.NODE_ENV !== 'production') return true;
   try {
@@ -50,9 +50,12 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({
   origin(origin, callback) {
     if (isAllowedOrigin(origin)) return callback(null, true);
-    return callback(new Error(`CORS blocked origin: ${origin}`));
+    // Use callback(null, false) NOT callback(new Error(...)) to avoid Express 500 crashes
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(null, false);
   },
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
