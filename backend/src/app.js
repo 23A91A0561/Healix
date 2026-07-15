@@ -35,10 +35,11 @@ const allowedOrigins = [
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
+  // In development, allow any origin (covers LAN IPs like 10.x.x.x, 192.168.x.x)
+  if (process.env.NODE_ENV !== 'production') return true;
   try {
     const url = new URL(origin);
-    return process.env.NODE_ENV !== 'production'
-      && ['localhost', '127.0.0.1'].includes(url.hostname)
+    return ['localhost', '127.0.0.1'].includes(url.hostname)
       && ['5173', '5174', '5175'].includes(url.port);
   } catch {
     return false;

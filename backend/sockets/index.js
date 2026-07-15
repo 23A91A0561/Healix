@@ -4,7 +4,16 @@ import Chat from '../models/Chat.js';
 import Appointment from '../models/Appointment.js';
 
 export function initSockets(server) {
-  const io = new Server(server, { cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true } });
+  const io = new Server(server, {
+    cors: {
+      // In development allow any origin so different devices on the network can connect.
+      // In production restrict to the configured CLIENT_URL.
+      origin: process.env.NODE_ENV === 'production'
+        ? (process.env.CLIENT_URL || 'http://localhost:5173')
+        : true,
+      credentials: true,
+    },
+  });
   const videoRooms = new Map();
   const socketToVideoRoom = new Map();
   const videoParticipants = new Map();

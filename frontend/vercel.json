@@ -1,4 +1,8 @@
 {
+  "env": {
+    "VITE_API_URL": "https://healix-f6ao.onrender.com/api",
+    "VITE_SOCKET_URL": "https://healix-f6ao.onrender.com"
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -9,4 +13,4 @@
       "destination": "/index.html"
     }
   ]
-}
+}
