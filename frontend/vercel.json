@@ -1,12 +1,12 @@
 {
   "env": {
-    "VITE_API_URL": "https://healix-f6ao.onrender.com/api",
-    "VITE_SOCKET_URL": "https://healix-f6ao.onrender.com"
+    "VITE_API_URL": "https://healix-n9am.onrender.com/api",
+    "VITE_SOCKET_URL": "https://healix-n9am.onrender.com"
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://healix-f6ao.onrender.com/api/$1"
+      "destination": "https://healix-n9am.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

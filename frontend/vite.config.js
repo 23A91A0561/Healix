@@ -18,6 +18,11 @@ export default defineConfig({
 	},
 	server: {
 		port: 5173,
+		watch: {
+			// Exclude .env.production from Vite's file watcher.
+			// Windows locks this file causing EBUSY crashes in dev mode.
+			ignored: ['**/.env.production'],
+		},
 		proxy: {
 			// Proxy /video-app/* to the video-chat-app dev server at localhost:3000
 			// This keeps the iframe same-origin from the browser's perspective during development.
