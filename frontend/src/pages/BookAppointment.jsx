@@ -40,7 +40,7 @@ const BookAppointment = () => {
       );
 
       setShowConfirm(false);
-      navigate("/patient");
+      navigate("/booking-success");
     } catch (error) {
       console.log(error);
       setShowConfirm(false);
