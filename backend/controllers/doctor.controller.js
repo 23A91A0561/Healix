@@ -145,6 +145,9 @@ export async function getAvailability(req, res) {
     availability = [];
   }
 
+  // Sort slots in ascending time order regardless of selection order
+  availability.sort((a, b) => a.start.localeCompare(b.start));
+
   res.json({
     date: formatDateOnly(selectedDate),
     day: weekday,
